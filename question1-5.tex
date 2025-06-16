@@ -1,0 +1,1583 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{multirow}
+
+\geometry{margin=2.5cm}
+
+\title{\textbf{Advanced Machine Learning} \\ 
+       \Large Study Guide - Complete Questions}
+\author{Based on lectures by Jan Mielniczuk \\ Warsaw University of Technology}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Question 1: Linear Discriminant Function LDF and Quadratic Discriminant Function QDF}
+
+\textbf{Topic:} Linear Discriminant Function LDF and Quadratic Discriminant Function QDF (derivation). Within and Between Groups covariance matrices. Bayes rule (two forms) and its optimality. Construction of Bayes rule for classes having normal distributions with the same or different covariance matrices. Empirical version of these rules. Stepclass function.
+
+\textbf{Source:} AML\_LDA\_QDA\_English.pdf by Jan Mielniczuk
+
+\subsection{Introduction to Classification}
+
+\textbf{Classification} is about predicting which group (class) a new data point belongs to based on its features.
+
+Think of it like this: You have emails and want to classify them as "spam" or "not spam" based on their content. LDA and QDA are two mathematical methods to do this automatically.
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Key Concepts]
+\begin{itemize}
+    \item \textbf{Feature vector $\mathbf{x}$}: The measurements/characteristics of your data point
+    \item \textbf{Classes}: The groups you want to predict (like spam/not spam)
+    \item \textbf{Prior probabilities ($\pi_k$)}: How common each class is in general
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Bayes Rule and Its Optimality}
+
+\subsubsection{What is Bayes Rule?}
+
+Bayes rule helps us calculate the probability that a data point belongs to a specific class, given what we observe.
+
+\subsubsection{Two Forms of Bayes Rule}
+
+\textbf{Form 1 - Posterior Probability:}
+\begin{equation}
+P(\text{class } k | \mathbf{x}) = \frac{P(\mathbf{x} | \text{class } k) \times P(\text{class } k)}{P(\mathbf{x})}
+\end{equation}
+
+\textbf{Form 2 - Decision Rule:}
+\begin{equation}
+\text{Classify } \mathbf{x} \text{ to class } k \text{ if: } \pi_k \cdot p(\mathbf{x}|k) > \pi_j \cdot p(\mathbf{x}|j) \text{ for all } j \neq k
+\end{equation}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Simple Explanation]
+\begin{itemize}
+    \item $P(\text{class } k | \mathbf{x})$ = "What's the probability this data point belongs to class k?"
+    \item $P(\mathbf{x} | \text{class } k)$ = "How likely is this data point if it belongs to class k?"
+    \item $P(\text{class } k) = \pi_k$ = "How common is class k in general?"
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{Why is Bayes Rule Optimal?}
+
+Bayes rule \textbf{minimizes the probability of making classification errors}. This means it's the best possible classifier if you know the true probability distributions.
+
+\textbf{Think of it like this:} If you had perfect knowledge about how spam and non-spam emails are distributed, Bayes rule would give you the classifier that makes the fewest mistakes possible.
+
+\subsection{Linear Discriminant Function (LDF)}
+
+\subsubsection{When Do We Use LDA?}
+
+LDA is used when:
+\begin{enumerate}
+    \item Data in each class follows a \textbf{normal (Gaussian) distribution}
+    \item \textbf{All classes have the same covariance matrix} (same "spread" and "shape")
+\end{enumerate}
+
+\subsubsection{Mathematical Derivation}
+
+\textbf{Step 1:} Start with normal distributions
+
+\begin{equation}
+p(\mathbf{x}|k) = \frac{1}{(2\pi)^{p/2} |\boldsymbol{\Sigma}|^{1/2}} \exp\left(-\frac{1}{2} (\mathbf{x}-\boldsymbol{\mu}_k)^T\boldsymbol{\Sigma}^{-1}(\mathbf{x}-\boldsymbol{\mu}_k)\right)
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\mathbf{x}$ = your data point (column vector)
+    \item $\boldsymbol{\mu}_k$ = mean of class $k$
+    \item $\boldsymbol{\Sigma}$ = covariance matrix (same for all classes)
+    \item $p$ = number of features
+\end{itemize}
+
+\textbf{Step 2:} Apply Bayes rule (maximizing log likelihood)
+
+\begin{equation}
+\log[\pi_k \times p(\mathbf{x}|k)] = \log \pi_k + \log p(\mathbf{x}|k)
+\end{equation}
+
+\textbf{Step 3:} Simplify by removing constant terms
+
+\begin{equation}
+\delta_k(\mathbf{x}) = -\frac{1}{2} (\mathbf{x}-\boldsymbol{\mu}_k)^T\boldsymbol{\Sigma}^{-1}(\mathbf{x}-\boldsymbol{\mu}_k) + \log \pi_k
+\end{equation}
+
+\textbf{Step 4:} For two classes, the discriminant function becomes:
+
+\begin{equation}
+\delta_{12}(\mathbf{x}) = (\boldsymbol{\mu}_1-\boldsymbol{\mu}_2)^T\boldsymbol{\Sigma}^{-1}\mathbf{x} - \frac{1}{2}(\boldsymbol{\mu}_1-\boldsymbol{\mu}_2)^T\boldsymbol{\Sigma}^{-1}(\boldsymbol{\mu}_1+\boldsymbol{\mu}_2) + \log\left(\frac{\pi_1}{\pi_2}\right)
+\end{equation}
+
+\subsubsection{Key Result: Linear Function!}
+
+The discriminant function $\delta_{12}(\mathbf{x})$ is \textbf{linear in $\mathbf{x}$}. This means the decision boundary between classes is a straight line (in 2D) or a hyperplane (in higher dimensions).
+
+\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!75!black,title=Decision Rule]
+\begin{itemize}
+    \item If $\delta_{12}(\mathbf{x}) > 0$ $\Rightarrow$ classify to class 1
+    \item If $\delta_{12}(\mathbf{x}) < 0$ $\Rightarrow$ classify to class 2
+    \item If $\delta_{12}(\mathbf{x}) = 0$ $\Rightarrow$ on the boundary
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Quadratic Discriminant Function (QDF)}
+
+\subsubsection{When Do We Use QDA?}
+
+QDA is used when:
+\begin{enumerate}
+    \item Data in each class follows a \textbf{normal distribution}
+    \item \textbf{Each class can have a different covariance matrix} (different "spread" and "shape")
+\end{enumerate}
+
+\subsubsection{Mathematical Derivation}
+
+\textbf{The discriminant function for QDA:}
+
+\begin{equation}
+\delta_k(\mathbf{x}) = -\frac{1}{2} \log|\boldsymbol{\Sigma}_k| - \frac{1}{2} (\mathbf{x}-\boldsymbol{\mu}_k)^T\boldsymbol{\Sigma}_k^{-1}(\mathbf{x}-\boldsymbol{\mu}_k) + \log \pi_k
+\end{equation}
+
+\textbf{For comparing two classes:}
+
+\begin{equation}
+\delta_{kl}(\mathbf{x}) = \delta_k(\mathbf{x}) - \delta_l(\mathbf{x})
+\end{equation}
+
+\subsubsection{Key Result: Quadratic Function!}
+
+Unlike LDA, the discriminant function is \textbf{quadratic in $\mathbf{x}$}. This means the decision boundary is a curved surface (parabola, ellipse, hyperbola, etc.).
+
+\textbf{Why quadratic?} Because each class has its own covariance matrix $\boldsymbol{\Sigma}_k$, the terms don't cancel out like they do in LDA.
+
+\subsection{Within and Between Groups Covariance Matrices}
+
+Understanding covariance matrices is crucial for LDA and QDA.
+
+\subsubsection{Within-Class Covariance Matrix ($\mathbf{W}$)}
+
+Measures the variability \textbf{within each class}.
+
+\begin{equation}
+\mathbf{W} = \frac{1}{n_1+n_2-2} \times [(n_1-1)\mathbf{S}_1 + (n_2-1)\mathbf{S}_2]
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\mathbf{S}_1, \mathbf{S}_2$ = sample covariance matrices for each class
+    \item $n_1, n_2$ = number of samples in each class
+\end{itemize}
+
+\textbf{Simple explanation:} How much do the data points spread out within each class?
+
+\subsubsection{Between-Class Covariance Matrix ($\mathbf{B}$)}
+
+Measures the separation \textbf{between class means}.
+
+\begin{equation}
+\mathbf{B} = \frac{1}{g-1} \times \sum_{i=1}^{g} n_i(\bar{\mathbf{x}}_i - \bar{\mathbf{x}})(\bar{\mathbf{x}}_i - \bar{\mathbf{x}})^T
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\bar{\mathbf{x}}_i$ = mean of class $i$
+    \item $\bar{\mathbf{x}}$ = overall mean
+    \item $g$ = number of classes
+\end{itemize}
+
+\textbf{Simple explanation:} How far apart are the class centers from each other?
+
+\subsubsection{Relationship}
+
+\begin{equation}
+\boxed{(n-g)\mathbf{W} + (g-1)\mathbf{B} = (n-1)\mathbf{S}}
+\end{equation}
+
+This is called the \textbf{decomposition of variability} - total variation = within-class + between-class variation.
+
+\subsection{Empirical Versions of These Rules}
+
+In practice, we don't know the true parameters, so we estimate them from data:
+
+\subsubsection{LDA Empirical Estimates}
+
+\begin{align}
+\hat{\boldsymbol{\mu}}_k &= \bar{\mathbf{x}}_k \quad \text{(sample mean of class k)} \\
+\hat{\boldsymbol{\Sigma}} &= \frac{1}{n-g} \times \sum_{k=1}^{g}(n_k-1)\mathbf{S}_k \quad \text{(pooled covariance matrix)} \\
+\hat{\pi}_k &= \frac{n_k}{n} \quad \text{(proportion of samples in class k)}
+\end{align}
+
+\subsubsection{QDA Empirical Estimates}
+
+\begin{align}
+\hat{\boldsymbol{\mu}}_k &= \bar{\mathbf{x}}_k \quad \text{(sample mean of class k)} \\
+\hat{\boldsymbol{\Sigma}}_k &= \mathbf{S}_k \quad \text{(separate covariance matrix for each class)} \\
+\hat{\pi}_k &= \frac{n_k}{n} \quad \text{(proportion of samples in class k)}
+\end{align}
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=Key Difference]
+LDA uses one shared covariance matrix, QDA uses separate matrices for each class.
+\end{tcolorbox}
+
+\subsection{Stepclass Function}
+
+The stepclass function is the \textbf{final classification rule} that assigns each point to a class.
+
+\begin{equation}
+\text{Classify } \mathbf{x} \text{ to class } k^* \text{ where } k^* = \arg\max_k \delta_k(\mathbf{x})
+\end{equation}
+
+\textbf{In simple terms:}
+\begin{enumerate}
+    \item Calculate the discriminant function value for each class
+    \item Assign the data point to the class with the highest value
+    \item This creates "steps" in the decision function - hence "stepclass"
+\end{enumerate}
+
+\subsection{Visual Examples and Comparison}
+
+\subsubsection{LDA vs QDA Comparison}
+
+\textbf{LDA (Linear Decision Boundary):}
+\begin{itemize}
+    \item Uses straight lines to separate classes
+    \item Assumes all classes have the same "shape" (covariance)
+    \item Good when this assumption is true
+    \item Simpler, less prone to overfitting
+\end{itemize}
+
+\textbf{QDA (Curved Decision Boundary):}
+\begin{itemize}
+    \item Uses curved boundaries to separate classes
+    \item Allows each class to have different "shapes"
+    \item More flexible but can overfit with small datasets
+    \item Better when classes have genuinely different spreads
+\end{itemize}
+
+\subsubsection{When to Use Which?}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Use LDA when:]
+\begin{itemize}
+    \item Classes have similar spreads/shapes
+    \item You have limited data
+    \item You want a simpler, more interpretable model
+\end{itemize}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Use QDA when:]
+\begin{itemize}
+    \item Classes have clearly different spreads/shapes
+    \item You have sufficient data
+    \item You need more flexible decision boundaries
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Summary of Question 1}
+
+\begin{enumerate}
+    \item \textbf{Bayes Rule} provides the optimal classification framework with two forms
+    \item \textbf{LDA} assumes equal covariance matrices $\Rightarrow$ linear boundaries
+    \item \textbf{QDA} allows different covariance matrices $\Rightarrow$ quadratic boundaries
+    \item \textbf{Within/Between covariance matrices} measure different variability patterns
+    \item \textbf{Empirical versions} estimate parameters from real data for practical implementation
+    \item \textbf{Stepclass function} makes the final classification decision
+\end{enumerate}
+
+The choice between LDA and QDA depends on your data's characteristics and the trade-off between model complexity and performance.
+
+% Space for next questions
+\newpage
+
+\section{Question 2: Binary and Polytomous Logistic Model and Corresponding Classifiers}
+
+\textbf{Topic:} Binary and polytomous logistic model and corresponding classifiers (derivation of posteriori probabilities). ML estimation for binary model and IRLS algorithm. Lasso and ridge in logistic model. Significance tests for predictors based on deviances. Comparison with LDA.
+
+\textbf{Source:} AML\_Logistic\_English\_2.pdf by Jan Mielniczuk
+
+\subsection{Introduction to Logistic Regression}
+
+Logistic regression is a \textbf{linear classification method} that directly models the posterior probabilities $P(\text{class} | \mathbf{x})$ without making assumptions about the distribution of features within each class (unlike LDA/QDA).
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Key Advantages of Logistic Regression]
+\begin{itemize}
+    \item \textbf{Direct estimation} of posterior probabilities $P(Y=k|\mathbf{x})$
+    \item \textbf{No distributional assumptions} about predictors
+    \item More robust to departures from normality than LDA
+    \item Works well even when class distributions are not normal
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Binary Logistic Model}
+
+\subsubsection{Model Formulation}
+
+For binary classification ($Y \in \{0,1\}$), the logistic model is:
+
+\begin{equation}
+P(Y = 1 | \mathbf{x}) = \frac{1}{1 + \exp(-\boldsymbol{\beta}^T\mathbf{x})} = \frac{\exp(\boldsymbol{\beta}^T\mathbf{x})}{1 + \exp(\boldsymbol{\beta}^T\mathbf{x})}
+\end{equation}
+
+\begin{equation}
+P(Y = 0 | \mathbf{x}) = \frac{1}{1 + \exp(\boldsymbol{\beta}^T\mathbf{x})}
+\end{equation}
+
+Where $\boldsymbol{\beta}^T\mathbf{x} = \beta_0 + \beta_1 x_1 + \cdots + \beta_p x_p$.
+
+\subsubsection{Logit Transformation}
+
+The \textbf{logit} (log-odds) provides the linear relationship:
+
+\begin{equation}
+\text{logit}(p) = \log\left(\frac{P(Y=1|\mathbf{x})}{P(Y=0|\mathbf{x})}\right) = \log\left(\frac{p}{1-p}\right) = \boldsymbol{\beta}^T\mathbf{x}
+\end{equation}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Interpretation]
+The logit transformation converts probabilities (bounded between 0 and 1) into real numbers (unbounded), allowing us to use linear modeling techniques.
+\end{tcolorbox}
+
+\subsubsection{Derivation of Posterior Probabilities}
+
+Starting from the logit form:
+\begin{align}
+\log\left(\frac{p}{1-p}\right) &= \boldsymbol{\beta}^T\mathbf{x} \\
+\frac{p}{1-p} &= \exp(\boldsymbol{\beta}^T\mathbf{x}) \\
+p &= (1-p) \exp(\boldsymbol{\beta}^T\mathbf{x}) \\
+p &= \exp(\boldsymbol{\beta}^T\mathbf{x}) - p \exp(\boldsymbol{\beta}^T\mathbf{x}) \\
+p(1 + \exp(\boldsymbol{\beta}^T\mathbf{x})) &= \exp(\boldsymbol{\beta}^T\mathbf{x}) \\
+P(Y=1|\mathbf{x}) &= \frac{\exp(\boldsymbol{\beta}^T\mathbf{x})}{1 + \exp(\boldsymbol{\beta}^T\mathbf{x})}
+\end{align}
+
+\subsection{Polytomous (Multinomial) Logistic Model}
+
+For $g$ classes ($Y \in \{1,2,\ldots,g\}$), we use a \textbf{reference class} approach (typically the last class $g$):
+
+\subsubsection{Model Formulation}
+
+\begin{align}
+\log\frac{P(Y=1|\mathbf{x})}{P(Y=g|\mathbf{x})} &= \boldsymbol{\beta}_1^T\mathbf{x} \\
+\log\frac{P(Y=2|\mathbf{x})}{P(Y=g|\mathbf{x})} &= \boldsymbol{\beta}_2^T\mathbf{x} \\
+&\vdots \\
+\log\frac{P(Y=g-1|\mathbf{x})}{P(Y=g|\mathbf{x})} &= \boldsymbol{\beta}_{g-1}^T\mathbf{x}
+\end{align}
+
+Where $\boldsymbol{\beta}_i^T = (\beta_{i0}, \beta_{i1}, \ldots, \beta_{ip})^T$ for $i = 1, \ldots, g-1$.
+
+\subsubsection{Posterior Probabilities}
+
+Once parameters are estimated, the posterior probabilities are:
+
+\begin{align}
+\hat{p}(k|\mathbf{x}) &= \frac{\exp(\hat{\boldsymbol{\beta}}_k^T\mathbf{x})}{1 + \sum_{i=1}^{g-1} \exp(\hat{\boldsymbol{\beta}}_i^T\mathbf{x})} \quad \text{for } k = 1, \ldots, g-1 \\
+\hat{p}(g|\mathbf{x}) &= \frac{1}{1 + \sum_{i=1}^{g-1} \exp(\hat{\boldsymbol{\beta}}_i^T\mathbf{x})}
+\end{align}
+
+\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!75!black,title=Classification Rule]
+\textbf{Empirical Bayes Rule:} Classify $\mathbf{x}$ to class $\ell$ where:
+$$\ell = \arg\max_i \hat{p}(i|\mathbf{x})$$
+\end{tcolorbox}
+
+\subsection{Maximum Likelihood (ML) Estimation for Binary Model}
+
+\subsubsection{Likelihood Function}
+
+For independent observations $Y_1, Y_2, \ldots, Y_n$ where $Y_i \sim \text{Bernoulli}(\pi_i)$ and $\pi_i = P(Y_i = 1|\mathbf{x}_i)$:
+
+\begin{equation}
+L(\boldsymbol{\beta}) = \prod_{i=1}^n \pi_i^{Y_i}(1-\pi_i)^{1-Y_i}
+\end{equation}
+
+\subsubsection{Log-Likelihood Function}
+
+\begin{align}
+\ell(\boldsymbol{\beta}) &= \log L(\boldsymbol{\beta}) \\
+&= \sum_{i=1}^n \left[ Y_i \log\left(\frac{\pi_i}{1-\pi_i}\right) + \log(1-\pi_i) \right] \\
+&= \sum_{i=1}^n \left[ Y_i \boldsymbol{\beta}^T\mathbf{x}_i - \log(1 + \exp(\boldsymbol{\beta}^T\mathbf{x}_i)) \right]
+\end{align}
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=Important Property]
+The log-likelihood function $\ell(\boldsymbol{\beta})$ is \textbf{concave}, which guarantees a unique global maximum. This means the ML estimator has a unique solution.
+\end{tcolorbox}
+
+\subsection{IRLS Algorithm (Iteratively Reweighted Least Squares)}
+
+Since the log-likelihood equation $\frac{\partial \ell}{\partial \boldsymbol{\beta}} = 0$ has no closed-form solution, we use the Newton-Raphson method.
+
+\subsubsection{Newton-Raphson Update}
+
+\begin{equation}
+\boldsymbol{\beta}^{\text{new}} = \boldsymbol{\beta}^{\text{old}} - \mathbf{H}^{-1}(\boldsymbol{\beta}^{\text{old}}) \frac{\partial \ell}{\partial \boldsymbol{\beta}}\bigg|_{\boldsymbol{\beta}=\boldsymbol{\beta}^{\text{old}}}
+\end{equation}
+
+Where $\mathbf{H}(\boldsymbol{\beta})$ is the \textbf{Hessian matrix} (matrix of second derivatives):
+
+\begin{equation}
+\mathbf{H}(\boldsymbol{\beta}) = -\frac{\partial^2 \ell}{\partial \boldsymbol{\beta} \partial \boldsymbol{\beta}^T}
+\end{equation}
+
+\subsubsection{IRLS Interpretation}
+
+The Newton-Raphson method for logistic regression can be written as a \textbf{weighted least squares} problem:
+
+\begin{equation}
+\boldsymbol{\beta}^{\text{new}} = (\mathbf{X}^T\mathbf{W}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{W}\mathbf{z}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\mathbf{W}$ = diagonal matrix with weights $w_i = \pi_i(1-\pi_i)$
+    \item $\mathbf{z}$ = working response vector
+    \item The weights are updated at each iteration (hence "iteratively reweighted")
+\end{itemize}
+
+\subsection{Regularization: Lasso and Ridge in Logistic Model}
+
+\subsubsection{Ridge Logistic Regression}
+
+\begin{equation}
+\hat{\boldsymbol{\beta}}_{\text{Ridge}} = \arg\min_{\boldsymbol{\beta}} \left\{ -2 \log L(\boldsymbol{\beta}) + \lambda \sum_{j=1}^p \beta_j^2 \right\}
+\end{equation}
+
+\textbf{Effect:} Shrinks coefficients towards zero, similar to SVM behavior.
+
+\subsubsection{Lasso Logistic Regression}
+
+\begin{equation}
+\hat{\boldsymbol{\beta}}_{\text{Lasso}} = \arg\min_{\boldsymbol{\beta}} \left\{ -2 \log L(\boldsymbol{\beta}) + \lambda \sum_{j=1}^p |\beta_j| \right\}
+\end{equation}
+
+\textbf{Effect:} Performs variable selection by setting some coefficients exactly to zero.
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Note on Regularization]
+\begin{itemize}
+    \item $\lambda$ controls the strength of regularization
+    \item Both methods help prevent overfitting
+    \item Lasso provides automatic feature selection
+    \item Ridge keeps all variables but shrinks their effects
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Significance Tests Based on Deviances}
+
+\subsubsection{Deviance Definition}
+
+The \textbf{deviance} measures how well the model fits compared to a saturated model:
+
+\begin{equation}
+\text{Deviance} = -2[\ell(\hat{\boldsymbol{\beta}}) - \ell_{\text{saturated}}]
+\end{equation}
+
+\subsubsection{Types of Deviances}
+
+\textbf{Null Deviance:} Deviance of the model with only intercept
+\begin{equation}
+D_{\text{null}} = -2\ell(\hat{\beta}_0)
+\end{equation}
+
+\textbf{Residual Deviance:} Deviance of the fitted model
+\begin{equation}
+D_{\text{residual}} = -2\ell(\hat{\boldsymbol{\beta}})
+\end{equation}
+
+\subsubsection{Testing Overall Model Significance}
+
+Test whether any predictors are significant:
+
+\begin{align}
+H_0&: \beta_1 = \beta_2 = \cdots = \beta_p = 0 \\
+H_1&: \text{At least one } \beta_j \neq 0
+\end{align}
+
+\textbf{Test statistic:}
+\begin{equation}
+G^2 = D_{\text{null}} - D_{\text{residual}} \sim \chi^2_p \text{ under } H_0
+\end{equation}
+
+\subsubsection{Testing Nested Models}
+
+To compare two nested models (Model 1 $\subset$ Model 2):
+
+\begin{equation}
+G^2 = D_{\text{Model 1}} - D_{\text{Model 2}} \sim \chi^2_{df_1 - df_2} \text{ under } H_0
+\end{equation}
+
+\textbf{Example from lectures:}
+\begin{itemize}
+    \item Large difference between null and residual deviance indicates significant predictors
+    \item $p$-value calculated as: \texttt{1-pchisq(105.17-57.56, 7-1)}
+    \item If $p < 0.05$, reject $H_0$ (predictors are significant)
+\end{itemize}
+
+\subsection{Comparison with LDA}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Aspect} & \textbf{Logistic Regression} & \textbf{LDA} \\
+\hline
+\textbf{Assumptions} & No distributional assumptions & Normal distributions, equal $\boldsymbol{\Sigma}$ \\
+\hline
+\textbf{Estimation} & Direct $P(Y|\mathbf{x})$ estimation & Separate $\pi_k$ and $p(\mathbf{x}|k)$ \\
+\hline
+\textbf{Robustness} & More robust to violations & Less robust \\
+\hline
+\textbf{Efficiency} & 30\% less efficient when LDA & More efficient when \\
+ & assumptions hold & assumptions hold \\
+\hline
+\textbf{Decision boundary} & Linear (logit scale) & Linear (original scale) \\
+\hline
+\textbf{Flexibility} & Works with any predictors & Assumes normal predictors \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Robustness Theorem}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Rudd-Brillinger Theorem (1983)]
+Even when the logistic model is misspecified (e.g., true model is probit), the ML estimator $\hat{\boldsymbol{\beta}}_{\text{ML}}$ correctly estimates the \textbf{direction} of the true parameter vector $\boldsymbol{\beta}_0$:
+
+$$\hat{\boldsymbol{\beta}}_{\text{ML}} \approx \eta \boldsymbol{\beta}_0$$
+
+This means logistic regression gives the correct classification boundary even under model misspecification.
+\end{tcolorbox}
+
+\subsubsection{When to Use Each Method}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Use LDA when:]
+\begin{itemize}
+    \item Predictors are approximately normal within classes
+    \item Classes have similar covariance structures
+    \item You have sufficient data and want maximum efficiency
+    \item You need interpretable results in terms of discriminant functions
+\end{itemize}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Use Logistic Regression when:]
+\begin{itemize}
+    \item Predictors are not normal or have unknown distributions
+    \item You want direct probability estimates
+    \item You need robustness to model violations
+    \item You want to include categorical predictors easily
+    \item You need regularization (Lasso/Ridge) for variable selection
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Summary of Question 2}
+
+\begin{enumerate}
+    \item \textbf{Binary logistic model} uses the logit transformation to model probabilities linearly
+    \item \textbf{Polytomous model} extends to multiple classes using reference class approach
+    \item \textbf{ML estimation} requires iterative methods (IRLS/Newton-Raphson) due to nonlinear equations
+    \item \textbf{IRLS algorithm} solves ML estimation through weighted least squares iterations
+    \item \textbf{Regularization} (Lasso/Ridge) prevents overfitting and enables variable selection
+    \item \textbf{Deviance tests} provide significance testing for predictors and model comparison
+    \item \textbf{Comparison with LDA} shows trade-offs between efficiency and robustness
+\end{enumerate}
+
+\newpage
+\section{Question 3: Loss Functions for Classification}
+
+\textbf{Topic:} Loss functions for classification (logistic, hinge, 0-1, exponential). Their connection with Bayes rule (derivation of the minimiser of exponential risk).
+
+\textbf{Source:} AML\_Logistic\_English\_2.pdf, AML\_SVM\_English.pdf, AML\_Committees\_II\_English.pdf, AML\_Bayes\_optimality\_kernel\_estimator\_English.pdf by Jan Mielniczuk
+
+\subsection{Introduction to Loss Functions in Classification}
+
+In classification, we seek to find a function $f(\mathbf{x})$ that minimizes the expected risk. The choice of \textbf{loss function} $\ell(y, f(\mathbf{x}))$ determines the properties of the resulting classifier.
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=General Framework]
+For binary classification with $Y \in \{-1, +1\}$:
+\begin{itemize}
+    \item \textbf{Classification function}: $f(\mathbf{x}) : \mathcal{X} \to \mathbb{R}$
+    \item \textbf{Decision rule}: $\text{sign}(f(\mathbf{x}))$
+    \item \textbf{Margin}: $yf(\mathbf{x})$ (positive when correct, negative when incorrect)
+    \item \textbf{Risk}: $R(f) = \mathbb{E}_{X,Y}[\ell(Y, f(X))]$
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{The Four Main Loss Functions}
+
+\subsubsection{0-1 Loss (Prediction Error)}
+
+The most natural loss function for classification:
+
+\begin{equation}
+\ell_{0-1}(y, f(\mathbf{x})) = \mathbb{I}\{yf(\mathbf{x}) < 0\} = \begin{cases}
+0 & \text{if } yf(\mathbf{x}) > 0 \text{ (correct)} \\
+1 & \text{if } yf(\mathbf{x}) < 0 \text{ (incorrect)}
+\end{cases}
+\end{equation}
+
+\textbf{Properties:}
+\begin{itemize}
+    \item Directly measures classification error rate
+    \item Non-convex and discontinuous
+    \item Computationally intractable for optimization
+    \item Used as evaluation metric, not for training
+\end{itemize}
+
+\subsubsection{Logistic Loss (Binomial)}
+
+Used in logistic regression:
+
+\begin{equation}
+\ell_{\text{logistic}}(y, f(\mathbf{x})) = \log(1 + \exp(-yf(\mathbf{x})))
+\end{equation}
+
+\textbf{Properties:}
+\begin{itemize}
+    \item Smooth and convex everywhere
+    \item Decreases as margin $yf(\mathbf{x})$ increases
+    \item Never reaches zero (always positive)
+    \item Closely related to maximum likelihood estimation
+\end{itemize}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Connection to ML Estimation]
+Minimizing empirical risk with logistic loss:
+$$\sum_{i=1}^n \ell_{\text{logistic}}(Y_i, f(\mathbf{x}_i)) = \sum_{i=1}^n \log(1 + \exp(-Y_i f(\mathbf{x}_i))) = -L(\boldsymbol{\beta})$$
+is equivalent to maximum likelihood estimation in logistic regression!
+\end{tcolorbox}
+
+\subsubsection{Hinge Loss}
+
+Used in Support Vector Machines (SVM):
+
+\begin{equation}
+\ell_{\text{hinge}}(y, f(\mathbf{x})) = \max(0, 1 - yf(\mathbf{x})) = [1 - yf(\mathbf{x})]_+
+\end{equation}
+
+\textbf{Properties:}
+\begin{itemize}
+    \item Piecewise linear and convex
+    \item Zero loss when margin $yf(\mathbf{x}) \geq 1$
+    \item Linear penalty for margin $< 1$
+    \item Not differentiable at $yf(\mathbf{x}) = 1$
+    \item Focuses on points near the decision boundary
+\end{itemize}
+
+\subsubsection{Exponential Loss}
+
+Used in AdaBoost:
+
+\begin{equation}
+\ell_{\text{exp}}(y, f(\mathbf{x})) = \exp(-yf(\mathbf{x}))
+\end{equation}
+
+\textbf{Properties:}
+\begin{itemize}
+    \item Smooth and convex everywhere
+    \item Exponentially increasing penalty for misclassification
+    \item Very sensitive to outliers
+    \item Closely related to AdaBoost algorithm
+\end{itemize}
+
+\subsection{Visual Comparison of Loss Functions}
+
+From the lecture materials, we can see the behavior of these loss functions as a function of the margin $yf(\mathbf{x})$:
+
+\begin{itemize}
+    \item \textbf{0-1 loss} (blue): Step function at margin = 0
+    \item \textbf{Logistic loss} (black): Smooth S-shaped curve
+    \item \textbf{Hinge loss} (red): Piecewise linear with kink at margin = 1
+    \item \textbf{Exponential loss}: Exponentially decreasing with positive margin
+    \item \textbf{Squared loss/4} (green): Quadratic function (also shown for comparison)
+\end{itemize}
+
+\subsection{Connection with Bayes Rule}
+
+A key question is: \textit{Do these loss functions lead to the optimal Bayes classifier?}
+
+\subsubsection{General Principle}
+
+For any loss function, the optimal classifier minimizes the conditional risk:
+
+\begin{equation}
+f^*(\mathbf{x}) = \arg\min_f \mathbb{E}[l(Y, f(\mathbf{x})) | X = \mathbf{x}]
+\end{equation}
+
+\subsubsection{0-1 Loss and Bayes Rule}
+
+For 0-1 loss, the conditional risk is:
+\begin{align}
+\mathbb{E}[\ell_{0-1}(Y, f(\mathbf{x})) | X = \mathbf{x}] &= P(Yf(\mathbf{x}) < 0 | X = \mathbf{x}) \\
+&= P(Y \neq \text{sign}(f(\mathbf{x})) | X = \mathbf{x})
+\end{align}
+
+This is minimized when $\text{sign}(f(\mathbf{x})) = \text{sign}(P(Y=1|\mathbf{x}) - P(Y=-1|\mathbf{x}))$, which gives the \textbf{Bayes classifier}.
+
+\subsubsection{Logistic Loss and Bayes Rule}
+
+For logistic loss, the conditional risk is:
+
+\begin{align}
+W(f) &= \mathbb{E}[\log(1 + e^{-Yf(\mathbf{x})}) | X = \mathbf{x}] \\
+&= P(Y = 1|X = \mathbf{x}) \log(1 + e^{-f(\mathbf{x})}) + P(Y = -1|X = \mathbf{x}) \log(1 + e^{f(\mathbf{x})})
+\end{align}
+
+Taking the derivative with respect to $f$ and setting to zero:
+
+\begin{align}
+\frac{\partial W}{\partial f} &= -\frac{1}{1 + e^{f(\mathbf{x})}} P(Y = 1|X = \mathbf{x}) + \frac{e^{f(\mathbf{x})}}{1 + e^{f(\mathbf{x})}} P(Y = -1|X = \mathbf{x}) = 0
+\end{align}
+
+Solving for $f^*(\mathbf{x})$:
+
+\begin{equation}
+\boxed{f^*(\mathbf{x}) = \log \frac{P(Y = 1|X = \mathbf{x})}{P(Y = -1|X = \mathbf{x})}}
+\end{equation}
+
+This gives the \textbf{log-odds ratio}, leading to the Bayes classifier!
+
+\subsection{Derivation of Exponential Risk Minimizer}
+
+The exponential loss is particularly important because it's used in AdaBoost. Let's derive its population minimizer.
+
+\subsubsection{Setting Up the Problem}
+
+For exponential loss $\ell_{\text{exp}}(y, f(\mathbf{x})) = \exp(-yf(\mathbf{x}))$, the conditional risk is:
+
+\begin{equation}
+R(f|\mathbf{x}) = \mathbb{E}[\exp(-Yf(\mathbf{x})) | X = \mathbf{x}]
+\end{equation}
+
+\subsubsection{Expanding the Expectation}
+
+\begin{align}
+R(f|\mathbf{x}) &= P(Y = 1|X = \mathbf{x}) \exp(-f(\mathbf{x})) + P(Y = -1|X = \mathbf{x}) \exp(f(\mathbf{x}))
+\end{align}
+
+Let $p(\mathbf{x}) = P(Y = 1|X = \mathbf{x})$, then $P(Y = -1|X = \mathbf{x}) = 1 - p(\mathbf{x})$.
+
+\begin{equation}
+R(f|\mathbf{x}) = p(\mathbf{x}) e^{-f(\mathbf{x})} + (1-p(\mathbf{x})) e^{f(\mathbf{x})}
+\end{equation}
+
+\subsubsection{Finding the Minimizer}
+
+To minimize, take the derivative with respect to $f(\mathbf{x})$ and set to zero:
+
+\begin{align}
+\frac{\partial R}{\partial f} &= -p(\mathbf{x}) e^{-f(\mathbf{x})} + (1-p(\mathbf{x})) e^{f(\mathbf{x})} = 0 \\
+p(\mathbf{x}) e^{-f(\mathbf{x})} &= (1-p(\mathbf{x})) e^{f(\mathbf{x})} \\
+p(\mathbf{x}) &= (1-p(\mathbf{x})) e^{2f(\mathbf{x})} \\
+\frac{p(\mathbf{x})}{1-p(\mathbf{x})} &= e^{2f(\mathbf{x})} \\
+2f(\mathbf{x}) &= \log \frac{p(\mathbf{x})}{1-p(\mathbf{x})} \\
+f^*(\mathbf{x}) &= \frac{1}{2} \log \frac{p(\mathbf{x})}{1-p(\mathbf{x})}
+\end{align}
+
+\begin{equation}
+\boxed{f^*(\mathbf{x}) = \frac{1}{2} \log \frac{P(Y = 1|X = \mathbf{x})}{P(Y = -1|X = \mathbf{x})}}
+\end{equation}
+
+\subsubsection{Connection to Bayes Classifier}
+
+The optimal classifier is:
+\begin{equation}
+\text{sign}(f^*(\mathbf{x})) = \text{sign}\left(\frac{1}{2} \log \frac{P(Y = 1|X = \mathbf{x})}{P(Y = -1|X = \mathbf{x})}\right)
+\end{equation}
+
+Since $\frac{1}{2} > 0$, this reduces to:
+\begin{equation}
+\text{sign}(f^*(\mathbf{x})) = \text{sign}\left(\log \frac{P(Y = 1|X = \mathbf{x})}{P(Y = -1|X = \mathbf{x})}\right)
+\end{equation}
+
+This gives the \textbf{Bayes classifier}! 
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=Key Result]
+The exponential loss minimizer differs from the logistic loss minimizer only by a factor of $\frac{1}{2}$:
+$$f^*_{\text{exp}}(\mathbf{x}) = \frac{1}{2} f^*_{\text{logistic}}(\mathbf{x})$$
+Both lead to the same Bayes classifier when we take $\text{sign}(f(\mathbf{x}))$.
+\end{tcolorbox}
+
+\subsection{Relationship Between Loss Functions and Algorithms}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Loss Function} & \textbf{Algorithm} & \textbf{Properties} & \textbf{Bayes Optimal} \\
+\hline
+0-1 Loss & Empirical Risk Min. & Non-convex, intractable & Yes \\
+\hline
+Logistic Loss & Logistic Regression & Smooth, convex & Yes \\
+\hline
+Hinge Loss & SVM & Convex, non-smooth & Yes \\
+\hline
+Exponential Loss & AdaBoost & Smooth, convex & Yes \\
+\hline
+Squared Loss & Least Squares & Smooth, convex & No* \\
+\hline
+\end{tabular}
+\end{table}
+
+*Squared loss can lead to Bayes classifier but is not optimal for classification.
+
+\subsection{Why Exponential Loss Works in AdaBoost}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=AdaBoost Connection]
+AdaBoost sequentially minimizes:
+$$\frac{1}{n}\sum_{i=1}^n L(Y_i, F(\mathbf{x}_i)) \quad \text{where } L(y,f) = \exp(-yf)$$
+
+In the family of functions: $F(\mathbf{x}) = \sum_{c=1}^C \gamma_c f_c(\mathbf{x})$
+
+Since $\frac{1}{n}\sum_{i=1}^n L(Y_i, F(\mathbf{x}_i))$ estimates $\mathbb{E}[L(Y, F(X))]$, minimizing this empirical risk approximates the Bayes classifier.
+\end{tcolorbox}
+
+\subsection{Comparison of Loss Functions}
+
+\subsubsection{Sensitivity to Outliers}
+\begin{itemize}
+    \item \textbf{Exponential}: Most sensitive (exponential growth)
+    \item \textbf{Logistic}: Moderately sensitive 
+    \item \textbf{Hinge}: Less sensitive (linear growth)
+    \item \textbf{0-1}: Least sensitive (bounded)
+\end{itemize}
+
+\subsubsection{Computational Properties}
+\begin{itemize}
+    \item \textbf{Logistic}: Smooth, easy to optimize
+    \item \textbf{Exponential}: Smooth, easy to optimize
+    \item \textbf{Hinge}: Non-smooth at one point, requires special methods
+    \item \textbf{0-1}: Non-convex, computationally hard
+\end{itemize}
+
+\subsubsection{Practical Considerations}
+\begin{itemize}
+    \item \textbf{Noisy data}: Prefer hinge or logistic over exponential
+    \item \textbf{Clean data}: Exponential works well (AdaBoost)
+    \item \textbf{Probabilistic output}: Use logistic loss
+    \item \textbf{Large margin}: Use hinge loss (SVM)
+\end{itemize}
+
+\subsection{Summary of Question 3}
+
+\begin{enumerate}
+    \item \textbf{Four main loss functions} each have different properties and use cases
+    \item \textbf{All four loss functions} (except squared) lead to the Bayes classifier when minimized
+    \item \textbf{Exponential loss minimizer} is $\frac{1}{2} \log \frac{P(Y=1|X)}{P(Y=-1|X)}$, giving Bayes classifier
+    \item \textbf{Connection to algorithms}: Each loss function corresponds to different learning algorithms
+    \item \textbf{Trade-offs}: Smooth vs. robust, sensitive vs. insensitive to outliers
+    \item \textbf{Practical choice}: Depends on data characteristics and computational requirements
+\end{enumerate}
+
+\newpage
+\section{Question 4: Precision and Recall, F-measure, and Performance Evaluation}
+
+\textbf{Topic:} Precision and recall, F-measure (theoretical and empirical). Conditional and unconditional misclassification error of a classifier. Estimators of unconditional misclassification error: resubstitution estimator, based on test sample, cross-validation and bootstrap (0.632 estimator). ROC and LIFT curves.
+
+\textbf{Source:} AML\_LDA\_QDA\_English.pdf, AML\_Committees\_I\_English.pdf, AML\_Regression\_I\_English\_II.pdf, AML\_Semisupervised\_PU\_English.pdf by Jan Mielniczuk
+
+\subsection{Confusion Matrix and Basic Metrics}
+
+For binary classification, all performance metrics are derived from the \textbf{confusion matrix}:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+& & \multicolumn{2}{|c|}{\textbf{Predicted}} \\
+\hline
+& & Positive & Negative \\
+\hline
+\multirow{2}{*}{\textbf{True}} & Positive & TP & FN \\
+\hline
+& Negative & FP & TN \\
+\hline
+\end{tabular}
+\end{table}
+
+Where:
+\begin{itemize}
+    \item \textbf{TP} (True Positive): Correctly predicted positive cases
+    \item \textbf{TN} (True Negative): Correctly predicted negative cases  
+    \item \textbf{FP} (False Positive): Incorrectly predicted as positive (Type I error)
+    \item \textbf{FN} (False Negative): Incorrectly predicted as negative (Type II error)
+\end{itemize}
+
+\subsection{Precision and Recall}
+
+\subsubsection{Theoretical Definitions}
+
+\textbf{Precision (Positive Predictive Value):}
+\begin{equation}
+\text{Precision} = P(\text{True Positive} | \text{Predicted Positive}) = \frac{\text{TP}}{\text{TP} + \text{FP}}
+\end{equation}
+
+\textbf{Recall (Sensitivity, True Positive Rate):}
+\begin{equation}
+\text{Recall} = P(\text{Predicted Positive} | \text{True Positive}) = \frac{\text{TP}}{\text{TP} + \text{FN}}
+\end{equation}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Intuitive Understanding]
+\begin{itemize}
+    \item \textbf{Precision}: "Of all positive predictions, how many were actually correct?"
+    \item \textbf{Recall}: "Of all actual positive cases, how many did we correctly identify?"
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{Example from Lecture Materials}
+
+From the Beijing subway pickpocket detection example:
+
+\begin{itemize}
+    \item \textbf{True Selection Rate (Recall)} = 0.93
+        \begin{itemize}
+            \item 93\% of actual pickpockets were correctly identified
+        \end{itemize}
+    \item \textbf{False Discovery Rate} = 0.92 
+        \begin{itemize}
+            \item Precision = 1 - 0.92 = 0.08
+            \item Only 8\% of people apprehended were actually pickpockets
+            \item "13 from 14 apprehended were innocent"
+        \end{itemize}
+\end{itemize}
+
+\subsubsection{Empirical Estimators}
+
+For a dataset with $n$ observations:
+
+\begin{align}
+\widehat{\text{Precision}} &= \frac{\sum_{i=1}^n \mathbb{I}\{\hat{Y}_i = 1, Y_i = 1\}}{\sum_{i=1}^n \mathbb{I}\{\hat{Y}_i = 1\}} \\
+\widehat{\text{Recall}} &= \frac{\sum_{i=1}^n \mathbb{I}\{\hat{Y}_i = 1, Y_i = 1\}}{\sum_{i=1}^n \mathbb{I}\{Y_i = 1\}}
+\end{align}
+
+\subsection{F-measure}
+
+\subsubsection{Theoretical Definition}
+
+The F-measure combines precision and recall into a single metric:
+
+\begin{equation}
+F_\beta = \frac{(1 + \beta^2) \cdot \text{Precision} \cdot \text{Recall}}{\beta^2 \cdot \text{Precision} + \text{Recall}}
+\end{equation}
+
+\textbf{Special case - F1 Score ($\beta = 1$):}
+\begin{equation}
+F_1 = \frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}} = \frac{2 \cdot \text{TP}}{2 \cdot \text{TP} + \text{FP} + \text{FN}}
+\end{equation}
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=F-measure Properties]
+\begin{itemize}
+    \item \textbf{Harmonic mean} of precision and recall
+    \item Ranges from 0 to 1 (higher is better)
+    \item Penalizes extreme imbalances between precision and recall
+    \item $\beta > 1$: Emphasizes recall over precision
+    \item $\beta < 1$: Emphasizes precision over recall
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{Empirical F-measure}
+
+\begin{equation}
+\widehat{F_1} = \frac{2 \cdot \widehat{\text{Precision}} \cdot \widehat{\text{Recall}}}{\widehat{\text{Precision}} + \widehat{\text{Recall}}}
+\end{equation}
+
+\subsection{Additional Performance Metrics}
+
+\subsubsection{Accuracy}
+\begin{equation}
+\text{Accuracy} = \frac{\text{TP} + \text{TN}}{\text{TP} + \text{TN} + \text{FP} + \text{FN}}
+\end{equation}
+
+\subsubsection{Specificity (True Negative Rate)}
+\begin{equation}
+\text{Specificity} = \frac{\text{TN}}{\text{TN} + \text{FP}}
+\end{equation}
+
+\subsubsection{False Positive Rate}
+\begin{equation}
+\text{FPR} = 1 - \text{Specificity} = \frac{\text{FP}}{\text{TN} + \text{FP}}
+\end{equation}
+
+\subsection{Conditional vs Unconditional Misclassification Error}
+
+\subsubsection{Conditional Misclassification Error}
+
+The error rate given specific feature values:
+
+\begin{equation}
+R(\mathbf{x}) = P(\hat{Y} \neq Y | X = \mathbf{x})
+\end{equation}
+
+This varies across different regions of the feature space.
+
+\subsubsection{Unconditional Misclassification Error}
+
+The overall error rate across the entire population:
+
+\begin{equation}
+R = P(\hat{Y} \neq Y) = \mathbb{E}[R(\mathbf{x})] = \int R(\mathbf{x}) p(\mathbf{x}) d\mathbf{x}
+\end{equation}
+
+\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!75!black,title=Key Difference]
+\begin{itemize}
+    \item \textbf{Conditional error}: Performance at specific input values
+    \item \textbf{Unconditional error}: Average performance across all possible inputs
+    \item Unconditional error is what we typically want to estimate for model comparison
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Estimators of Unconditional Misclassification Error}
+
+\subsubsection{Resubstitution Estimator}
+
+Uses the same data for training and testing:
+
+\begin{equation}
+\hat{R}_{\text{resub}} = \frac{1}{n} \sum_{i=1}^n \mathbb{I}\{\hat{Y}_i \neq Y_i\}
+\end{equation}
+
+\textbf{Properties:}
+\begin{itemize}
+    \item \textbf{Biased downward}: Overly optimistic
+    \item Often significantly underestimates true error
+    \item Easy to compute
+    \item Should not be used for model selection
+\end{itemize}
+
+\subsubsection{Test Sample Estimator}
+
+Uses independent test data not used in training:
+
+\begin{equation}
+\hat{R}_{\text{test}} = \frac{1}{n_{\text{test}}} \sum_{i=1}^{n_{\text{test}}} \mathbb{I}\{\hat{Y}_i^{\text{test}} \neq Y_i^{\text{test}}\}
+\end{equation}
+
+\textbf{Properties:}
+\begin{itemize}
+    \item \textbf{Unbiased} estimator of true error
+    \item Requires splitting available data
+    \item Higher variance than other methods
+    \item Gold standard when sufficient data available
+\end{itemize}
+
+\textbf{Example from lectures:} AdaBoost test error = 0.042 vs individual classifier test error = 0.1386
+
+\subsubsection{Cross-Validation (CV)}
+
+Splits data into $K$ folds, uses $K-1$ for training and 1 for testing, repeats $K$ times:
+
+\begin{equation}
+\hat{R}_{\text{CV}} = \frac{1}{K} \sum_{k=1}^K \hat{R}_k
+\end{equation}
+
+Where $\hat{R}_k$ is the error rate on the $k$-th fold.
+
+\textbf{For linear smoothers}, there's a computational shortcut:
+
+\begin{equation}
+\hat{R}_{\text{CV}} = \frac{1}{n} \sum_{i=1}^n \left(\frac{Y_i - \hat{f}(\mathbf{x}_i)}{1 - S(\mathbf{i},\mathbf{i})}\right)^2
+\end{equation}
+
+Where $S$ is the smoother matrix.
+
+\textbf{Properties:}
+\begin{itemize}
+    \item \textbf{Nearly unbiased} for true error
+    \item Lower variance than test sample estimator
+    \item Uses all data for both training and testing
+    \item Computationally intensive
+\end{itemize}
+
+\subsubsection{Bootstrap Estimator}
+
+Generates $B$ bootstrap samples by sampling with replacement:
+
+\begin{equation}
+\hat{R}_{\text{bootstrap}} = \frac{1}{B} \sum_{b=1}^B \hat{R}_b^*
+\end{equation}
+
+\textbf{Standard Bootstrap:} Often too optimistic (similar bias to resubstitution)
+
+\subsubsection{0.632 Bootstrap Estimator}
+
+Combines bootstrap and resubstitution estimators to reduce bias:
+
+\begin{equation}
+\hat{R}_{0.632} = 0.368 \hat{R}_{\text{resub}} + 0.632 \hat{R}_{\text{bootstrap}}
+\end{equation}
+
+\textbf{Rationale:}
+\begin{itemize}
+    \item In bootstrap sampling, probability that an observation is \textbf{not} selected is $(1-\frac{1}{n})^n \approx e^{-1} = 0.368$
+    \item So approximately 63.2\% of observations appear in each bootstrap sample
+    \item The 0.632 estimator balances the optimistic resubstitution with the more realistic bootstrap estimate
+\end{itemize}
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=Comparison of Error Estimators]
+\begin{itemize}
+    \item \textbf{Resubstitution}: Fastest, most biased (too optimistic)
+    \item \textbf{Test sample}: Unbiased, high variance, requires data splitting  
+    \item \textbf{Cross-validation}: Nearly unbiased, moderate variance, computationally intensive
+    \item \textbf{0.632 Bootstrap}: Good bias-variance trade-off, moderate computation
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{ROC Curves}
+
+\subsubsection{Definition}
+
+ROC (Receiver Operating Characteristic) curve plots True Positive Rate vs False Positive Rate across different classification thresholds:
+
+\begin{align}
+\text{TPR} &= \frac{\text{TP}}{\text{TP} + \text{FN}} = \text{Sensitivity} = \text{Recall} \\
+\text{FPR} &= \frac{\text{FP}}{\text{FP} + \text{TN}} = 1 - \text{Specificity}
+\end{align}
+
+\subsubsection{Properties}
+
+\begin{itemize}
+    \item \textbf{Perfect classifier}: Point at (0,1) - 100\% sensitivity, 0\% false positive rate
+    \item \textbf{Random classifier}: Diagonal line from (0,0) to (1,1)
+    \item \textbf{Area Under Curve (AUC)}: Single metric summarizing ROC performance
+        \begin{itemize}
+            \item AUC = 1: Perfect classifier
+            \item AUC = 0.5: Random classifier  
+            \item AUC > 0.8: Generally considered good performance
+        \end{itemize}
+\end{itemize}
+
+\subsubsection{Advantages}
+\begin{itemize}
+    \item Threshold-independent evaluation
+    \item Robust to class imbalance
+    \item Allows comparison of classifiers across operating points
+\end{itemize}
+
+\subsection{LIFT Curves}
+
+\subsubsection{Definition}
+
+LIFT curves measure how much better a classifier performs compared to random selection, particularly useful for imbalanced datasets and ranking applications.
+
+\textbf{Cumulative LIFT at percentile $p$:}
+\begin{equation}
+\text{LIFT}(p) = \frac{\text{Precision at top } p\% \text{ predictions}}{\text{Overall positive rate}}
+\end{equation}
+
+\subsubsection{Interpretation}
+
+\begin{itemize}
+    \item \textbf{LIFT = 1}: No improvement over random selection
+    \item \textbf{LIFT > 1}: Better than random (higher is better)
+    \item \textbf{LIFT = 3 at 10\%}: The top 10\% of predictions contain 3× more positives than random sampling
+\end{itemize}
+
+\subsubsection{Applications}
+
+Particularly valuable in:
+\begin{itemize}
+    \item Marketing (targeting customers most likely to respond)
+    \item Fraud detection (focusing on highest-risk transactions)  
+    \item Medical screening (prioritizing high-risk patients)
+    \item Any scenario where resources are limited and you want to maximize "hits"
+\end{itemize}
+
+\subsection{Example: Performance Evaluation in Practice}
+
+From the lecture materials, consider a logistic regression example:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+& \textbf{Predicted No} & \textbf{Predicted Yes} \\
+\hline
+\textbf{Actual No} & 40 & 4 \\
+\hline
+\textbf{Actual Yes} & 8 & 25 \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Calculations:}
+\begin{align}
+\text{Precision} &= \frac{25}{25 + 4} = 0.862 \\
+\text{Recall} &= \frac{25}{25 + 8} = 0.758 \\
+F_1 &= \frac{2 \times 0.862 \times 0.758}{0.862 + 0.758} = 0.806 \\
+\text{Accuracy} &= \frac{40 + 25}{40 + 4 + 8 + 25} = 0.844
+\end{align}
+
+\subsection{Summary of Question 4}
+
+\begin{enumerate}
+    \item \textbf{Precision and Recall} are fundamental metrics derived from the confusion matrix
+    \item \textbf{F-measure} combines precision and recall using harmonic mean
+    \item \textbf{Conditional vs Unconditional error} distinguishes local vs global performance
+    \item \textbf{Error estimation methods} each have different bias-variance trade-offs:
+        \begin{itemize}
+            \item Resubstitution: Fast but biased
+            \item Test sample: Unbiased but high variance
+            \item Cross-validation: Nearly unbiased, moderate variance
+            \item 0.632 Bootstrap: Good compromise
+        \end{itemize}
+    \item \textbf{ROC curves} provide threshold-independent evaluation
+    \item \textbf{LIFT curves} measure improvement over random selection
+    \item \textbf{Choice of metric} depends on application requirements and class balance
+\end{enumerate}
+
+\newpage
+\section{Question 5: Risk of the Classifier and Empirical Bayes Rules}
+
+\textbf{Topic:} Risk of the classifier. Empirical Bayes rules (density estimation based, naive Bayes, kNN). Probability histogram, definition and properties of kernel density estimators, choice of bandwidth.
+
+\textbf{Source:} AML\_Bayes\_optimality\_kernel\_estimator\_English.pdf, AML\_SVM\_English.pdf, AML\_LDA\_QDA\_English.pdf by Jan Mielniczuk
+
+\subsection{Risk of the Classifier}
+
+\subsubsection{Definition of Risk}
+
+For a classification function $g$ and loss function $\ell$, the \textbf{risk} is defined as:
+
+\begin{equation}
+R(g) = \mathbb{E}_{X,Y}[\ell(Y, g(X))]
+\end{equation}
+
+\textbf{For 0-1 loss} with $Y \in \{-1, +1\}$:
+\begin{equation}
+R(g) = \mathbb{E}_{X,Y}[\mathbb{I}\{Yg(X) < 0\}] = P(\text{misclassification})
+\end{equation}
+
+\subsubsection{Risk for Multi-class Classification}
+
+For $g$ classes with decision rule $d(x): \mathcal{X} \to \{1, 2, \ldots, g\}$ and 0-1 loss:
+
+\begin{equation}
+R(d) = P(d(X) \neq Y) = \sum_{i=1}^g \pi_i P(d(X) \neq i | Y = i)
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\pi_i = P(Y = i)$ are prior probabilities
+    \item $p_{ij}^d = P(d(X) = i | Y = j)$ are conditional classification probabilities
+\end{itemize}
+
+\begin{equation}
+R(d) = \sum_{i=1}^g \pi_i (1 - p_{ii}^d) = 1 - \sum_{i=1}^g \pi_i p_{ii}^d
+\end{equation}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Bayes Risk]
+The \textbf{Bayes classifier} $d^*$ minimizes risk:
+$$d^* = \arg\min_d R(d)$$
+The corresponding \textbf{Bayes risk} is the minimum achievable risk for any classifier.
+\end{tcolorbox}
+
+\subsection{Empirical Bayes Rules}
+
+When the true densities $p(x|k)$ and prior probabilities $\pi_k$ are unknown, we must estimate them from data to construct \textbf{empirical Bayes rules}.
+
+\subsubsection{General Framework}
+
+The empirical Bayes classifier is:
+\begin{equation}
+\hat{d}(x) = \arg\max_{k=1,\ldots,g} \hat{\pi}_k \hat{p}(x|k)
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\hat{\pi}_k = \frac{n_k}{n}$ (empirical prior probabilities)
+    \item $\hat{p}(x|k)$ are estimated class-conditional densities
+\end{itemize}
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Types of Empirical Bayes Rules]
+\begin{enumerate}
+    \item \textbf{Parametric}: LDA, QDA (assume normal distributions)
+    \item \textbf{Semi-parametric}: Naive Bayes with estimated densities
+    \item \textbf{Nonparametric}: Density estimation based, kNN
+\end{enumerate}
+\end{tcolorbox}
+
+\subsection{Naive Bayes Classifier}
+
+\subsubsection{Independence Assumption}
+
+For $p$-dimensional feature vector $\mathbf{x} = (x^{(1)}, x^{(2)}, \ldots, x^{(p)})^T$, naive Bayes assumes:
+
+\begin{equation}
+p(\mathbf{x}|k) = \prod_{j=1}^p p(x^{(j)}|k)
+\end{equation}
+
+\textbf{Classification rule:}
+\begin{equation}
+\hat{d}(\mathbf{x}) = \arg\max_k \hat{\pi}_k \prod_{j=1}^p \hat{p}(x^{(j)}|k)
+\end{equation}
+
+\subsubsection{Advantages and Limitations}
+
+\textbf{Advantages:}
+\begin{itemize}
+    \item Simple and computationally efficient
+    \item Works well with small datasets
+    \item Handles mixed data types easily
+    \item Often performs surprisingly well despite strong assumptions
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}
+    \item Independence assumption often violated in practice
+    \item Can be poor when features are highly correlated
+    \item Requires density estimation for continuous features
+\end{itemize}
+
+\subsection{k-Nearest Neighbors (kNN)}
+
+\subsubsection{Algorithm Description}
+
+For a query point $\mathbf{x}$:
+
+1. Find the $k$ nearest neighbors in the training set
+2. Let $\tilde{R}_k(\mathbf{x})$ be the radius of the smallest ball containing these $k$ points
+3. Classify $\mathbf{x}$ to the class with the most representatives among these $k$ neighbors
+
+\begin{equation}
+\hat{d}(\mathbf{x}) = \arg\max_i \sum_{j \in N_k(\mathbf{x})} \mathbb{I}\{Y_j = i\}
+\end{equation}
+
+Where $N_k(\mathbf{x})$ denotes the set of $k$ nearest neighbors to $\mathbf{x}$.
+
+\subsubsection{Properties of kNN}
+
+\begin{itemize}
+    \item \textbf{Nonparametric}: Makes no distributional assumptions
+    \item \textbf{Lazy learning}: No explicit training phase
+    \item \textbf{Locally adaptive}: Decision boundary adapts to local data structure
+    \item \textbf{Curse of dimensionality}: Performance degrades in high dimensions
+\end{itemize}
+
+\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!75!black,title=Choice of k]
+\begin{itemize}
+    \item $k = 1$: Highly flexible, prone to overfitting
+    \item $k$ large: Smoother decision boundary, potential underfitting
+    \item Odd $k$ recommended to avoid ties in binary classification
+    \item Typically chosen via cross-validation
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Probability Histogram}
+
+\subsubsection{Definition}
+
+The simplest density estimator divides the data range into bins and estimates density as:
+
+\begin{equation}
+\hat{p}(x) = \frac{\text{number of observations in bin containing } x}{n \times \text{bin width}}
+\end{equation}
+
+For bin $B_j = [x_{j-1}, x_j)$ with width $h_j = x_j - x_{j-1}$:
+
+\begin{equation}
+\hat{p}(x) = \frac{1}{nh_j} \sum_{i=1}^n \mathbb{I}\{X_i \in B_j\} \quad \text{for } x \in B_j
+\end{equation}
+
+\subsubsection{Properties}
+
+\textbf{Advantages:}
+\begin{itemize}
+    \item Simple to understand and implement
+    \item Fast computation
+    \item Natural for discrete or categorical data
+\end{itemize}
+
+\textbf{Disadvantages:}
+\begin{itemize}
+    \item Discontinuous density estimate
+    \item Sensitive to bin placement and width
+    \item Poor performance in high dimensions
+    \item Not smooth
+\end{itemize}
+
+\subsection{Kernel Density Estimators}
+
+\subsubsection{Definition}
+
+For a kernel function $K$ and bandwidth $h_n$, the kernel density estimator is:
+
+\begin{equation}
+\hat{p}_n(x) = \frac{1}{nh_n} \sum_{i=1}^n K\left(\frac{x - X_i}{h_n}\right)
+\end{equation}
+
+\subsubsection{Common Kernel Functions}
+
+\textbf{Gaussian Kernel:}
+\begin{equation}
+K(u) = \frac{1}{\sqrt{2\pi}} \exp\left(-\frac{u^2}{2}\right)
+\end{equation}
+
+\textbf{Uniform Kernel:}
+\begin{equation}
+K(u) = \frac{1}{2} \mathbb{I}\{|u| \leq 1\} = \begin{cases}
+\frac{1}{2} & \text{if } |u| \leq 1 \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\textbf{Triangular Kernel:}
+\begin{equation}
+K(u) = (1 - |u|) \mathbb{I}\{|u| \leq 1\}
+\end{equation}
+
+\textbf{Epanechnikov Kernel:}
+\begin{equation}
+K(u) = \frac{3}{4}(1 - u^2) \mathbb{I}\{|u| \leq 1\}
+\end{equation}
+
+\subsubsection{Example: Uniform Kernel}
+
+For the uniform kernel on $[-1/2, 1/2]$:
+
+\begin{equation}
+\hat{p}_n(x) = \frac{\text{number of points in } [x - h_n/2, x + h_n/2]}{nh_n}
+\end{equation}
+
+This is equivalent to a moving histogram with bin width $h_n$ centered at $x$.
+
+\subsection{Properties of Kernel Density Estimators}
+
+\subsubsection{Bias-Variance Trade-off}
+
+The behavior of $\hat{p}_n(x)$ depends critically on the bandwidth $h_n$:
+
+\begin{align}
+h_n \uparrow &\Rightarrow \text{Variance of } \hat{p}_n(x) \downarrow, \text{ Bias of } \hat{p}_n(x) \uparrow \\
+h_n \downarrow &\Rightarrow \text{Bias of } \hat{p}_n(x) \downarrow, \text{ Variance of } \hat{p}_n(x) \uparrow
+\end{align}
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=Bandwidth Effects]
+\begin{itemize}
+    \item \textbf{Too small $h_n$}: Undersmoothing, noisy estimate, high variance
+    \item \textbf{Too large $h_n$}: Oversmoothing, biased estimate, loss of detail
+    \item \textbf{Optimal $h_n$}: Balances bias and variance
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{Asymptotic Properties}
+
+Under regularity conditions:
+\begin{itemize}
+    \item \textbf{Consistency}: $\hat{p}_n(x) \to p(x)$ as $n \to \infty$ if $h_n \to 0$ and $nh_n \to \infty$
+    \item \textbf{Rate of convergence}: Optimal rate is $O(n^{-4/5})$ in one dimension
+\end{itemize}
+
+\subsection{Choice of Bandwidth}
+
+\subsubsection{Silverman's Rule}
+
+A popular automatic bandwidth selection method:
+
+\begin{equation}
+h_n = \left(\frac{4}{3}\right)^{1/5} \hat{\sigma} n^{-1/5}
+\end{equation}
+
+Where $\hat{\sigma} = \min(S, \text{IQR}/1.34)$ and:
+\begin{itemize}
+    \item $S$ = empirical standard deviation
+    \item IQR = interquartile range
+\end{itemize}
+
+\textbf{Rationale:} Optimal for Gaussian data, robust to outliers via IQR.
+
+\subsubsection{Sheather-Jones Method}
+
+A more sophisticated plug-in method that estimates the optimal bandwidth by:
+\begin{itemize}
+    \item Estimating the second derivative of the density
+    \item Solving the equation for optimal bandwidth numerically
+    \item Generally performs better than Silverman's rule
+\end{itemize}
+
+\subsubsection{Cross-Validation}
+
+Chooses bandwidth to minimize Integrated Squared Error (ISE):
+
+\begin{equation}
+\text{ISE}(\hat{p}) = \int (\hat{p}(x) - p(x))^2 dx
+\end{equation}
+
+Since true density $p$ is unknown, use leave-one-out cross-validation:
+
+\begin{equation}
+h_{\text{BCV}} = \arg\min_h \left( \int \hat{p}_h^2(x) dx - \frac{2}{n} \sum_{i=1}^n \hat{p}_{h,-i}(X_i) \right)
+\end{equation}
+
+Where $\hat{p}_{h,-i}$ is the density estimate using all points except $X_i$.
+
+\subsubsection{Nearest Neighbor Method}
+
+Adaptive bandwidth based on local density:
+
+\begin{equation}
+h_n = R_n = \text{distance from } x \text{ to } k(n)\text{-th nearest neighbor}
+\end{equation}
+
+\textbf{Properties:}
+\begin{itemize}
+    \item Larger bandwidth in sparse regions
+    \item Smaller bandwidth in dense regions  
+    \item Automatically adapts to local data structure
+\end{itemize}
+
+\subsection{Example from Lecture Materials}
+
+From the multimodal density estimation example, comparing different bandwidth selection methods:
+
+\begin{itemize}
+    \item \textbf{Sheather-Jones bandwidth}: Best captures multiple modes
+    \item \textbf{Silverman bandwidth}: Somewhat oversmoothed
+    \item \textbf{Default bandwidth (0.9 × Silverman)}: Most oversmoothed
+\end{itemize}
+
+The lecture notes state: "Kernel estimator with Sheather-Jones bandwidth describes modes of the histograms in the most adequate way."
+
+\subsection{Empirical Bayes with Density Estimation}
+
+\subsubsection{Construction}
+
+1. **Estimate class priors**: $\hat{\pi}_k = \frac{n_k}{n}$
+
+2. **Estimate class-conditional densities**: For each class $k$, use kernel density estimation on the $n_k$ observations from that class:
+   \begin{equation}
+   \hat{p}(x|k) = \frac{1}{n_k h_k} \sum_{i: Y_i = k} K\left(\frac{x - X_i}{h_k}\right)
+   \end{equation}
+
+3. **Classification rule**:
+   \begin{equation}
+   \hat{d}(x) = \arg\max_k \hat{\pi}_k \hat{p}(x|k)
+   \end{equation}
+
+\subsubsection{Practical Considerations}
+
+\begin{itemize}
+    \item May use different bandwidths $h_k$ for different classes
+    \item Can combine with mixture models: $\hat{p}(x) = \sum_{k=1}^g \hat{\pi}_k \hat{p}(x|k)$
+    \item Works well for multimodal class distributions
+    \item Computationally more expensive than parametric methods
+\end{itemize}
+
+\subsection{Summary of Question 5}
+
+\begin{enumerate}
+    \item \textbf{Risk of classifier} measures expected misclassification probability
+    \item \textbf{Empirical Bayes rules} estimate unknown densities and priors from data
+    \item \textbf{Naive Bayes} assumes feature independence, enabling simple density estimation
+    \item \textbf{kNN} is a nonparametric method based on local majority voting
+    \item \textbf{Probability histogram} is the simplest density estimator but has limitations
+    \item \textbf{Kernel density estimators} provide smooth density estimates with bias-variance trade-off controlled by bandwidth
+    \item \textbf{Bandwidth selection} is crucial: Silverman's rule, Sheather-Jones, cross-validation, and adaptive methods each have different properties
+    \item \textbf{Choice of method} depends on data characteristics, computational constraints, and required accuracy
+\end{enumerate}
+
+
+\end{document}
+

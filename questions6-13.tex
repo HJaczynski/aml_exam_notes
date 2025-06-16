@@ -1,0 +1,2212 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+
+\geometry{margin=2.5cm}
+
+\title{\textbf{Advanced Machine Learning} \\ 
+       \Large Study Guide - Complete Questions}
+\author{Based on lectures by Jan Mielniczuk \\ Warsaw University of Technology}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Question 6: CART Classifiers and Regression Estimators}
+
+\textbf{Topic:} CART classifiers and regression estimators: choice of a split, pruning, choice of the final tree, 1-SE rule, surrogate splits, heterogeneity indices used in trees and their properties. Handling nominal predictors in trees.
+
+\textbf{Source:} AML\_CART\_English.pdf, AML\_Regression\_I\_English\_II.pdf by Jan Mielniczuk
+
+\subsection{Introduction to CART}
+
+CART (Classification and Regression Trees) is a methodology introduced by Breiman, Friedman, Olshen and Stone (1984) for constructing decision trees that can handle both:
+
+\begin{itemize}
+    \item \textbf{Classification}: Predicting class $Y \in \{1, 2, \ldots, g\}$ 
+    \item \textbf{Regression}: Estimating $Y = f(\mathbf{X}) + \varepsilon$ where $\mathbb{E}[\varepsilon|\mathbf{X}] = 0$
+\end{itemize}
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Key Features of CART]
+\begin{itemize}
+    \item Works with continuous, nominal, and ordinal variables
+    \item Creates binary splits at each node
+    \item Uses recursive partitioning of feature space
+    \item Each leaf corresponds to a hypercube in feature space
+    \item Interpretable and easy to visualize
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Tree Structure and Decision Rules}
+
+\subsubsection{Node Structure}
+
+Each internal node contains a logical condition of the form:
+\begin{equation}
+\{X_i \leq c\} \quad \text{or} \quad \{X_i > c\}
+\end{equation}
+
+\begin{itemize}
+    \item If condition is true: follow left path
+    \item If condition is false: follow right path
+    \item Variable $X_i$ and threshold $c$ can change at each node
+\end{itemize}
+
+\subsubsection{Leaf Predictions}
+
+\textbf{Classification Trees:}
+\begin{equation}
+\hat{Y}(\mathbf{x}) = \arg\max_k \sum_{i \in R_m} \mathbb{I}\{Y_i = k\}
+\end{equation}
+Use majority rule in each leaf $R_m$.
+
+\textbf{Regression Trees:}
+\begin{equation}
+\hat{Y}(\mathbf{x}) = \frac{1}{|R_m|} \sum_{i \in R_m} Y_i
+\end{equation}
+Use sample mean in each leaf $R_m$.
+
+\subsection{Choice of a Split}
+
+\subsubsection{Classification Trees: Heterogeneity Indices}
+
+For a node $m$ with class proportions $\hat{p}_{mk} = \frac{n_{mk}}{n_m}$, three main heterogeneity indices are used:
+
+\textbf{1. Misclassification Rate:}
+\begin{equation}
+Q_m^{\text{misc}}(T) = 1 - \max_k \hat{p}_{mk}
+\end{equation}
+
+\textbf{2. Gini Index:}
+\begin{equation}
+Q_m^{\text{Gini}}(T) = \sum_{k=1}^g \hat{p}_{mk}(1 - \hat{p}_{mk}) = 1 - \sum_{k=1}^g \hat{p}_{mk}^2
+\end{equation}
+
+\textbf{3. Entropy:}
+\begin{equation}
+Q_m^{\text{entropy}}(T) = -\sum_{k=1}^g \hat{p}_{mk} \log \hat{p}_{mk}
+\end{equation}
+
+\subsubsection{Properties of Heterogeneity Indices}
+
+\textbf{For binary classification ($g = 2$) with proportion $p$ in class 1:}
+
+\begin{equation}
+Q_m(T) = \begin{cases}
+1 - \max(p, 1-p) & \text{misclassification rate} \\
+2p(1-p) & \text{Gini index} \\
+-p \log p - (1-p) \log(1-p) & \text{entropy}
+\end{cases}
+\end{equation}
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Properties of Indices]
+\begin{itemize}
+    \item All indices $\geq 0$
+    \item Equal 0 when node is pure (all same class)
+    \item Maximum when classes are equally distributed
+    \item \textbf{Gini and entropy are more sensitive} to changes in class distributions than misclassification rate
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{Gini Index Interpretation}
+
+For probability vector $\mathbf{p} = (p_1, \ldots, p_g)$, if $Z$ and $Z'$ are independent random variables with $P(Z = i) = P(Z' = i) = p_i$:
+
+\begin{equation}
+\text{Gini}(\mathbf{p}) = P(Z \neq Z') = \sum_{i=1}^g p_i(1-p_i)
+\end{equation}
+
+\textbf{Interpretation in trees:} Probability of misclassification when using a randomized rule that assigns class $k$ with probability $\hat{p}_{mk}$.
+
+\subsubsection{Split Selection Criterion}
+
+For a proposed split of node $m$ into left child $m_L$ and right child $m_R$:
+
+\begin{equation}
+\Delta Q_{m_L,m_R}(T) = Q_m(T) - \frac{n_{m_L}}{n_m} Q_{m_L}(T) - \frac{n_{m_R}}{n_m} Q_{m_R}(T)
+\end{equation}
+
+\textbf{Objective:} Maximize $\Delta Q_{m_L,m_R}(T)$ over all possible predictors $X_i$ and thresholds $c$.
+
+\subsubsection{Regression Trees: SSE Minimization}
+
+For regression trees, minimize the sum of squared errors:
+
+\begin{equation}
+\text{SSE}(m_L) + \text{SSE}(m_R)
+\end{equation}
+
+Where:
+\begin{equation}
+\text{SSE}(m) = \sum_{i \in R_m} (Y_i - \bar{Y}_m)^2
+\end{equation}
+
+This is equivalent to maximizing the reduction in SSE when splitting.
+
+\subsection{Pruning}
+
+\subsubsection{Problem with Full Trees}
+
+Growing trees without stopping rules leads to:
+\begin{itemize}
+    \item Overfitting (trees with single-element leaves)
+    \item Poor generalization performance
+    \item High variance
+\end{itemize}
+
+\subsubsection{Cost-Complexity Pruning}
+
+Define the cost-complexity measure:
+\begin{equation}
+R_\alpha(T) = R(T) + \alpha |T|
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $R(T)$ = impurity measure of tree $T$
+    \item $|T|$ = number of leaves in tree $T$
+    \item $\alpha \geq 0$ = complexity parameter
+\end{itemize}
+
+\textbf{For classification:} $R(T) = $ fraction of misclassified elements
+
+\textbf{For regression:} $R(T) = \sum_{\text{leaves}} \text{SSE}$
+
+\subsubsection{Pruning Algorithm}
+
+\begin{enumerate}
+    \item \textbf{Start} with full tree $T_0$ (grown until minimum leaf size reached)
+    \item \textbf{For increasing $\alpha$}, find trees $T_j$ that minimize $R_\alpha(T)$
+    \item \textbf{Generate sequence} $T_0 \supset T_1 \supset \cdots \supset T_k$ where $T_k$ is just the root
+    \item \textbf{Each $T_j$} minimizes $R_\alpha(T)$ for $\alpha \in [\alpha_j, \alpha_{j+1})$
+\end{enumerate}
+
+\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!75!black,title=Complexity Parameter Effects]
+\begin{itemize}
+    \item $\alpha = 0$: Full tree $T_0$
+    \item $\alpha$ small: Large, complex trees
+    \item $\alpha$ large: Small, simple trees
+    \item $\alpha \to \infty$: Root-only tree
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Choice of the Final Tree}
+
+\subsubsection{Cross-Validation Selection}
+
+\begin{enumerate}
+    \item \textbf{Compute} $R^{CV}(T_j)$ for each candidate tree $T_j$ using cross-validation
+    \item \textbf{Select} $j_0$ such that:
+   \begin{equation}
+   R^{CV}(T_{j_0}) = \min_j R^{CV}(T_j)
+   \end{equation}
+\end{enumerate}
+
+\subsubsection{The 1-SE Rule}
+
+A more conservative approach that accounts for statistical variability:
+
+\begin{equation}
+\text{Choose smallest tree } T_j \text{ such that } R^{CV}(T_j) \leq R^{CV}(T_{j_0}) + SE(R^{CV}(T_{j_0}))
+\end{equation}
+
+Where the standard error is:
+\begin{equation}
+SE(R^{CV}(T_{j_0})) = \sqrt{\frac{R^{CV}(T_{j_0})(1 - R^{CV}(T_{j_0}))}{V}}
+\end{equation}
+for $V$-fold cross-validation.
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=1-SE Rule Rationale]
+\begin{itemize}
+    \item Accounts for "leveling off" of $R^{CV}(T_j)$ around its minimum
+    \item Prefers simpler models when performance is statistically equivalent
+    \item Reduces overfitting and improves generalization
+    \item More robust to random variations in data
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{Example from Lecture Materials}
+
+From the diabetes example:
+\begin{itemize}
+    \item Tree with minimal cross-validation error: 7 partitions (xerror = 0.3446)
+    \item Standard error: SE = 0.035
+    \item 1-SE threshold: 0.3446 + 0.035 = 0.3752
+    \item 1-SE rule selects: Tree with 4 partitions
+\end{itemize}
+
+\subsection{Surrogate Splits}
+
+\subsubsection{Purpose}
+
+Handle missing values in predictors during both training and prediction.
+
+\subsubsection{Algorithm}
+
+\begin{enumerate}
+    \item \textbf{Primary split}: Find optimal split on variable $X_i$ with threshold $c$
+    \item \textbf{Surrogate splits}: Find the "next best" splits using other variables that most closely mimic the primary split
+    \item \textbf{Ranking}: Order surrogate splits by how well they approximate the primary split
+\end{enumerate}
+
+\subsubsection{Usage}
+
+\textbf{During training:}
+\begin{itemize}
+    \item Calculate primary split using complete cases
+    \item Calculate 2nd, 3rd, ... best surrogate splits
+    \item Store all splits for each node
+\end{itemize}
+
+\textbf{During prediction:}
+\begin{itemize}
+    \item If primary variable available: use primary split
+    \item If primary variable missing: use best available surrogate split
+    \item Continue down the tree using available information
+\end{itemize}
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Advantages of Surrogate Splits]
+\begin{itemize}
+    \item No need to discard observations with missing values
+    \item Maintains tree structure and interpretability
+    \item Often the missing information is redundant with other variables
+    \item Automatic handling without preprocessing
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{Handling Nominal Predictors in Trees}
+
+\subsubsection{Challenge}
+
+For a nominal variable with $L$ categories, there are $2^{L-1} - 1$ possible binary splits, which becomes computationally prohibitive for large $L$.
+
+\subsubsection{Solution for Binary Classification}
+
+\textbf{Theorem (for $g = 2$ classes):} For nominal attribute $X_i$ with $L$ values and heterogeneity measures being Gini index or entropy:
+
+\begin{enumerate}
+    \item \textbf{Order categories} by their class probability:
+   \begin{equation}
+   x_i^{(k)} \prec x_i^{(l)} \iff P(Y = 1 | X_i = x_i^{(k)}) < P(Y = 1 | X_i = x_i^{(l)})
+   \end{equation}
+
+    \item \textbf{Optimal split} is always of the form $\{X_i \leq c_k\}$ for some threshold $c_k$
+
+    \item \textbf{Complexity reduction}: From $2^{L-1} - 1$ splits to only $L-1$ splits to consider
+\end{enumerate}
+
+\subsubsection{Algorithm for Nominal Variables}
+
+\begin{enumerate}
+    \item \textbf{Estimate} $\hat{p}(1|x_i^{(k)}) = \frac{n_{1k}}{n_k}$ for each category $k$
+    \item \textbf{Sort categories} by these estimated probabilities
+    \item \textbf{Treat as ordinal} and consider only threshold splits
+    \item \textbf{Find optimal threshold} using standard split criteria
+\end{enumerate}
+
+\subsubsection{Multi-class Extension}
+
+For $g > 2$ classes, the problem is more complex:
+\begin{itemize}
+    \item No simple ordering guarantees optimality
+    \item May need to consider all $2^{L-1} - 1$ splits
+    \item Heuristic approaches often used in practice
+\end{itemize}
+
+\subsection{Advantages and Disadvantages of CART}
+
+\subsubsection{Advantages}
+
+\begin{itemize}
+    \item \textbf{Easy to interpret}: Visual tree structure is intuitive
+    \item \textbf{Mixed data types}: Handles continuous, nominal, ordinal predictors
+    \item \textbf{Missing values}: Automatic handling via surrogate splits
+    \item \textbf{No assumptions}: Nonparametric, no distributional assumptions
+    \item \textbf{Feature selection}: Automatically selects relevant variables
+    \item \textbf{Interactions}: Naturally captures variable interactions
+\end{itemize}
+
+\subsubsection{Disadvantages}
+
+\begin{itemize}
+    \item \textbf{Instability}: Small data changes can drastically alter tree structure
+    \item \textbf{High variance}: Due to hierarchical nature of splits
+    \item \textbf{Discontinuous}: Regression trees don't provide smooth estimates
+    \item \textbf{Poor for additive models}: Not suitable for $E[Y|\mathbf{X}] = f_1(X_1) + \cdots + f_p(X_p)$
+    \item \textbf{Optimization difficulty}: Finding optimal complexity parameter can be challenging
+\end{itemize}
+
+\subsubsection{Modern Remedies}
+
+\begin{itemize}
+    \item \textbf{Random Forests}: Reduce variance through bagging and random feature selection
+    \item \textbf{Gradient Boosting}: Sequential tree ensembles
+    \item \textbf{MARS}: Multivariate Adaptive Regression Splines as CART modification
+    \item \textbf{Ensemble methods}: Combine multiple trees to improve stability
+\end{itemize}
+
+\subsection{Practical Example}
+
+From the lecture materials - diabetes prediction in Pima Indians:
+
+\textbf{Variables:}
+\begin{itemize}
+    \item Number of pregnancies
+    \item Glucose test result ($\in$ (56, 199))
+    \item Systolic blood pressure
+    \item Triceps skin thickness (mm)
+    \item BMI = weight/(height in meters)²
+    \item Diabetes susceptibility coefficient ($\in$ (0.085, 2.42))
+    \item Age
+\end{itemize}
+
+\textbf{Sample:} $n = 532$, 33\% diabetes cases
+
+\textbf{Example leaf:} "Glucose test < 127.5 AND age < 28.5"
+\begin{itemize}
+    \item 214 elements in leaf
+    \item Majority class: no diabetes
+    \item 16 misclassified elements
+\end{itemize}
+
+\subsection{Summary of Question 6}
+
+\begin{enumerate}
+    \item \textbf{CART methodology} creates interpretable binary trees for classification and regression
+    \item \textbf{Split selection} uses heterogeneity indices (Gini, entropy, misclassification) for classification and SSE for regression
+    \item \textbf{Pruning} prevents overfitting using cost-complexity criterion $R_\alpha(T) = R(T) + \alpha|T|$
+    \item \textbf{Final tree selection} uses cross-validation with optional 1-SE rule for conservatism
+    \item \textbf{Surrogate splits} handle missing values automatically without data loss
+    \item \textbf{Nominal predictors} can be handled efficiently for binary classification using probability ordering
+    \item \textbf{Trade-offs} exist between interpretability and stability, leading to modern ensemble methods
+\end{enumerate}
+
+% Space for next questions
+\newpage
+
+\section{Question 7: Committees of Classifiers}
+
+\textbf{Topic:} Committees of classifiers: bagging (variants thereof, bias-variance decomposition for bagged regression), boosting (AdaBoost: algorithm and approach via risk minimisation). Heuristics why committees work based on Central Limit Theorem.
+
+\textbf{Source:} AML\_Committees\_I\_English.pdf, AML\_Committees\_II\_English.pdf by Jan Mielniczuk
+
+\subsection{Introduction to Committees of Classifiers}
+
+Committee methods combine multiple individual classifiers to create a more robust and accurate ensemble. The fundamental principle is that a collection of diverse classifiers can outperform any single classifier.
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Core Principle]
+The effectiveness of committees relies on the \textbf{collective wisdom phenomenon} - when individual classifiers make different types of errors, their combination can reduce overall error rates.
+\end{tcolorbox}
+
+\textbf{Main approaches:}
+\begin{itemize}
+    \item \textbf{Bagging}: Bootstrap Aggregating - parallel training with vote averaging
+    \item \textbf{Boosting}: Sequential training with adaptive weighting (e.g., AdaBoost)
+    \item \textbf{Random Forests}: Bagging with random feature selection
+\end{itemize}
+
+\subsection{Bagging (Bootstrap Aggregating)}
+
+\subsubsection{Algorithm}
+
+\begin{enumerate}
+    \item \textbf{Generate} $B$ bootstrap samples $U^{*1}, U^{*2}, \ldots, U^{*B}$ from training data
+    \item \textbf{Train} classifier $\hat{d}^{*i}(\mathbf{x})$ or regression estimator $\hat{f}^{*i}(\mathbf{x})$ on each bootstrap sample
+    \item \textbf{Combine predictions:}
+    \begin{itemize}
+        \item \textbf{Classification}: Majority rule or averaged posterior probabilities
+        \item \textbf{Regression}: Simple averaging
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Final predictions:}
+
+\textbf{Classification:}
+\begin{equation}
+\hat{d}_{\text{bag}}(\mathbf{x}) = \arg\max_y \sum_{i=1}^B \mathbb{I}\{\hat{d}^{*i}(\mathbf{x}) = y\}
+\end{equation}
+
+\textbf{Regression:}
+\begin{equation}
+\hat{f}_{\text{bag}}(\mathbf{x}) = \frac{1}{B} \sum_{i=1}^B \hat{f}^{*i}(\mathbf{x})
+\end{equation}
+
+\subsubsection{Bias-Variance Decomposition for Bagged Regression}
+
+For regression, the mean squared error can be decomposed as:
+\begin{equation}
+\mathbb{E}[(f(\mathbf{x}) - \hat{f}(\mathbf{x}))^2] = \text{Var}(\hat{f}(\mathbf{x})) + [\mathbb{E}[\hat{f}(\mathbf{x})] - f(\mathbf{x})]^2
+\end{equation}
+
+\textbf{Ideal case (independent estimators):}
+\begin{equation}
+\text{Var}(\hat{f}_{\text{bag}}(\mathbf{x})) = \frac{1}{B} \text{Var}(\hat{f}(\mathbf{x}))
+\end{equation}
+
+\textbf{Realistic case (correlated estimators):}
+\begin{align}
+\text{Var}(\hat{f}_{\text{bag}}(\mathbf{x})) &= \frac{1}{B} \text{Var}(\hat{f}(\mathbf{x})) + \frac{B(B-1)}{B^2} \text{Cov}(\hat{f}_1(\mathbf{x}), \hat{f}_2(\mathbf{x})) \\
+&= \frac{1}{B} \text{Var}(\hat{f}(\mathbf{x})) + \frac{B-1}{B} \rho \sigma^2 \\
+&= \frac{1-\rho}{B} \sigma^2 + \rho \sigma^2
+\end{align}
+
+Where $\rho$ is the correlation between individual estimators and $\sigma^2 = \text{Var}(\hat{f}(\mathbf{x}))$.
+
+\begin{tcolorbox}[colback=green!5!white,colframe=green!75!black,title=Key Insight]
+For large $B$ and $|\rho| < 1$: $\text{Var}(\hat{f}_{\text{bag}}(\mathbf{x})) \approx \rho \sigma^2 < \sigma^2$
+
+The variance reduction depends on the correlation $\rho$ between base estimators. Lower correlation leads to greater variance reduction.
+\end{tcolorbox}
+
+\subsubsection{Bias Effects in Bagging}
+
+\textbf{Bias consideration:}
+\begin{itemize}
+    \item If bootstrap samples were iid with same size as training data: bias would be unchanged
+    \item In reality: bootstrap estimator has \textbf{slightly larger bias} than original estimator
+    \item \textbf{Trade-off}: We lose on bias, we gain on variance
+\end{itemize}
+
+\begin{equation}
+\text{Bias}(\hat{f}_{\text{bag}}(\mathbf{x})) \geq \text{Bias}(\hat{f}(\mathbf{x}))
+\end{equation}
+
+\subsubsection{When Bagging is Useful}
+
+Bagging provides improvement when:
+\begin{itemize}
+    \item Individual classifiers have \textbf{large variance}
+    \item Bootstrap estimator is \textbf{not heavily biased} relative to original estimator
+    \item Variance reduction outweighs bias increase
+    \item Base classifiers are unstable (e.g., decision trees)
+\end{itemize}
+
+\textbf{Note for Classification:}
+The bias-variance analysis for classifiers is more complex than for regression because classification focuses on estimating the decision boundary $\{x : P(Y=1|X=\mathbf{x}) \geq 1/2\}$ rather than probability estimation directly.
+
+\subsection{Variants of Bagging}
+
+\subsubsection{Bagging with Averaged Posterior Probabilities}
+
+\begin{equation}
+\hat{d}(\mathbf{x}) = \arg\max_y \sum_{i=1}^B \hat{p}_i(y|\mathbf{x})
+\end{equation}
+
+Where $\hat{p}_i(y|\mathbf{x})$ is the estimated posterior probability from the $i$-th classifier.
+
+\subsubsection{Weighted Bagging}
+
+Instead of equal weights, use accuracy-based weights:
+
+\begin{enumerate}
+    \item Calculate accuracy of each classifier: $a^{*i} = \hat{P}(\hat{d}^{*i}(X) = Y)$
+    \item Assign weights: $w^{*i} = \frac{a^{*i}}{\sum_{j=1}^B a^{*j}}$
+    \item Final decision: $\hat{d}(\mathbf{x}) = \arg\max_y \sum_{i=1}^B w^{*i} \mathbb{I}\{\hat{d}^{*i}(\mathbf{x}) = y\}$
+\end{enumerate}
+
+\subsection{Boosting: AdaBoost Algorithm}
+
+\subsubsection{AdaBoost.M1 Algorithm}
+
+For binary classification with $Y \in \{-1, +1\}$:
+
+\textbf{Initialization:}
+\begin{itemize}
+    \item Set initial weights: $w_i = \frac{1}{n}$ for $i = 1, \ldots, n$
+\end{itemize}
+
+\textbf{For $c = 1, 2, \ldots, C$:}
+
+\textbf{Step 1:} Train classifier $f_c$ on training data with weights $(w_1, w_2, \ldots, w_n)$
+
+\textbf{Step 2:} Calculate weighted error:
+\begin{equation}
+\text{err}_c = \sum_{i=1}^n w_i \mathbb{I}\{Y_i \neq f_c(X_i)\}
+\end{equation}
+
+\textbf{Step 3:} If $\text{err}_c = 0$ or $\text{err}_c \geq 0.5$, stop. Otherwise, calculate:
+\begin{equation}
+\gamma_c = \log \frac{1 - \text{err}_c}{\text{err}_c} > 0
+\end{equation}
+
+\textbf{Step 4:} Update weights:
+\begin{equation}
+w_i \leftarrow w_i \exp(\gamma_c \mathbb{I}\{Y_i \neq f_c(X_i)\})
+\end{equation}
+
+\textbf{Step 5:} Normalize weights:
+\begin{equation}
+w_i \leftarrow \frac{w_i}{\sum_{j=1}^n w_j}
+\end{equation}
+
+\subsubsection{Final AdaBoost Classifier}
+
+\begin{equation}
+F(\mathbf{x}) = \text{sign}\left[\sum_{c=1}^C \gamma_c f_c(\mathbf{x})\right]
+\end{equation}
+
+\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!75!black,title=Key Properties of AdaBoost]
+\begin{itemize}
+    \item Classifiers with smaller error $\text{err}_c$ get larger weights $\gamma_c$
+    \item Misclassified observations get exponentially increased weights
+    \item Creates classifier diversity by focusing on "hard" examples
+    \item Forms a linear combination of weak learners
+    \item For deterministic base classifiers, AdaBoost is deterministic
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{AdaBoost as Risk Minimization}
+
+AdaBoost can be viewed as sequential minimization of exponential loss:
+
+\begin{equation}
+L(y, f) = \exp(-yf)
+\end{equation}
+
+The algorithm minimizes:
+\begin{equation}
+\frac{1}{n} \sum_{i=1}^n L(Y_i, F(X_i)) = \frac{1}{n} \sum_{i=1}^n \exp(-Y_i F(X_i))
+\end{equation}
+
+In the family of functions: $F(\mathbf{x}) = \sum_{c=1}^C \gamma_c f_c(\mathbf{x})$
+
+\textbf{Stagewise additive modeling:}
+\begin{equation}
+F_m(\mathbf{x}) = F_{m-1}(\mathbf{x}) + \gamma_m f_m(\mathbf{x})
+\end{equation}
+
+Starting with $F_0 \equiv 0$, optimize only with respect to $\gamma_m$ at each step.
+
+\subsubsection{Error Bound for AdaBoost}
+
+The resubstitution error of AdaBoost after $C$ iterations is bounded by:
+
+\begin{equation}
+\text{err}_{\text{Boost}} \leq 2^C \prod_{i=1}^C \sqrt{\text{err}_i (1 - \text{err}_i)}
+\end{equation}
+
+Since $\text{err}_i < 1/2$, we have $\sqrt{\text{err}_i (1 - \text{err}_i)} < 1/2 - \varepsilon$ for some $\varepsilon > 0$, leading to:
+
+\begin{equation}
+\text{err}_{\text{Boost}} \leq \eta^C
+\end{equation}
+
+where $\eta < 1$, showing exponential convergence to zero error.
+
+\subsection{Heuristics: Why Committees Work}
+
+\subsubsection{Condorcet's Jury Theorem (1785)}
+
+Consider $C$ independent classifiers, each with accuracy $p > 0.5$. Let $N$ be the number of correct classifications among the $C$ classifiers.
+
+\textbf{Majority rule succeeds when:} $N > 0.5C \iff \frac{N}{C} > 0.5$
+
+\textbf{Expected performance:} $\mathbb{E}[\frac{N}{C}] = p = 0.55$ (for example)
+
+\textbf{Variance:} $\text{Var}(\frac{N}{C}) = \frac{p(1-p)}{C} = \frac{0.45 \times 0.55}{C} \to 0$ as $C \to \infty$
+
+\subsubsection{Central Limit Theorem Application}
+
+By the Central Limit Theorem:
+\begin{equation}
+P(N \leq 0.5C) = P\left(\frac{N - pC}{\sqrt{p(1-p)C}} \leq \frac{-0.05C}{\sqrt{0.45 \times 0.55 \times C}}\right) \to 0
+\end{equation}
+
+as $C \to \infty$, since $\frac{-0.05C}{\sqrt{0.45 \times 0.55 \times C}} = \frac{-0.05\sqrt{C}}{\sqrt{0.45 \times 0.55}} \to -\infty$.
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title=Condorcet's Theorem]
+If individual classifiers have accuracy $p > 0.5$ and are independent, then as the number of classifiers $C \to \infty$, the probability that the majority vote is correct approaches 1.
+
+\textbf{Warning:} If $p < 0.5$, adding more classifiers makes the committee worse!
+\end{tcolorbox}
+
+\subsubsection{Practical Implications}
+
+\textbf{Requirements for success:}
+\begin{enumerate}
+    \item \textbf{Accuracy}: Each classifier must be better than random ($p > 0.5$)
+    \item \textbf{Diversity}: Classifiers should make different types of errors
+    \item \textbf{Independence}: Errors should not be perfectly correlated
+\end{enumerate}
+
+\textbf{Why it works in practice:}
+\begin{itemize}
+    \item Different algorithms capture different patterns
+    \item Bootstrap sampling creates natural diversity
+    \item Random feature selection (Random Forests) reduces correlation
+    \item Adaptive weighting (AdaBoost) forces focus on different examples
+\end{itemize}
+
+\subsection{Practical Examples and Performance}
+
+\subsubsection{AdaBoost with Tree Stumps}
+
+From the lecture materials - boosted stump example:
+\begin{itemize}
+    \item Individual classifier: Tree stump (depth 1)
+    \item 2000 training cases, 1000 in each class
+    \item Error rate reduced from 46\% to 6\%
+    \item Simple classifiers can be dramatically improved through boosting
+\end{itemize}
+
+\subsubsection{Advantages and Limitations}
+
+\textbf{Advantages:}
+\begin{itemize}
+    \item Usually achieve greater accuracy than individual classifiers
+    \item Can reduce error even when resubstitution error = 0
+    \item Work well with weak learners
+    \item Automatic feature selection and interaction detection
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}
+    \item Loss of interpretability (committee $\ne$ single tree)
+    \item Computational overhead
+    \item Potential overfitting with noisy data (especially AdaBoost)
+    \item May not always improve with more iterations
+\end{itemize}
+
+\subsection{Comparison: Bagging vs Boosting}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Aspect} & \textbf{Bagging} & \textbf{Boosting} \\
+\hline
+Training & Parallel & Sequential \\
+\hline
+Data sampling & Bootstrap resampling & Adaptive reweighting \\
+\hline
+Base learners & Usually deep trees & Usually weak learners \\
+\hline
+Combination & Equal weights/voting & Weighted combination \\
+\hline
+Focus & Variance reduction & Bias reduction \\
+\hline
+Overfitting & Less prone & More prone \\
+\hline
+Noise sensitivity & More robust & Less robust \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Summary of Question 7}
+
+\begin{enumerate}
+    \item \textbf{Committee methods} combine multiple classifiers to achieve better performance than individual models
+    \item \textbf{Bagging} reduces variance through bootstrap aggregating with bias-variance trade-offs well understood for regression
+    \item \textbf{AdaBoost} sequentially builds strong classifiers from weak ones through adaptive reweighting and exponential loss minimization
+    \item \textbf{Central Limit Theorem} provides theoretical justification via Condorcet's theorem for why majority voting works
+    \item \textbf{Success requires} accurate base classifiers ($p > 0.5$) and diversity in their errors
+    \item \textbf{Practical benefits} include improved accuracy, robustness, and automatic feature selection, at the cost of interpretability
+    \item \textbf{Modern extensions} like Random Forests and Gradient Boosting build on these foundational committee principles
+\end{enumerate}
+
+\newpage
+\section{Question 8: Functional Gradient Algorithm and XGboost, Random Subspace Methods (Random Forests), Variable Importance indices in RFs and Boruta method}
+
+\textbf{Source files:} AML\_Committees\_II\_English.pdf, AML\_Committees\_I\_English.pdf, AML\_CART\_English.pdf
+
+\subsection{Functional Gradient Algorithm (Gradient Boosting)}
+
+The Functional Gradient Algorithm, also known as \textbf{Gradient Boosting}, is a generic method proposed by Friedman that applies to both classification and regression problems. The core idea is to sequentially build an ensemble of weak learners, where each new learner corrects the mistakes of the previous ones.
+
+\subsubsection{Algorithm}
+We seek a classification function that minimizes empirical risk:
+\begin{equation}
+\arg\min_f n^{-1} \sum_{i=1}^n L(Y_i, f(X_i))
+\end{equation}
+
+\textbf{Initial step:} 
+\begin{equation}
+\hat{f}^{[0]}(\cdot) \equiv \arg\min_c n^{-1} \sum_{i=1}^n L(Y_i, c)
+\end{equation}
+
+For $m = 1, \ldots, m_{stop}$:
+
+\begin{enumerate}
+    \item \textbf{Compute gradients:}
+    \begin{equation}
+    U_i = -\frac{\partial}{\partial f} L(Y_i, f) \Big|_{f=\hat{f}^{[m-1]}(X_i)}, \quad i = 1, 2, \ldots, n
+    \end{equation}
+    
+    \item \textbf{Fit regression model:} Apply chosen regression method to the sample $(X_i, U_i)$:
+    \begin{equation}
+    (X_i, U_i) \rightarrow \hat{g}^{[m]}(\cdot)
+    \end{equation}
+    This estimates the negative gradient of the loss.
+    
+    \item \textbf{Update ensemble:}
+    \begin{equation}
+    f^{[m]}(\cdot) = f^{[m-1]}(\cdot) + \nu \times \hat{g}^{[m]}(\cdot)
+    \end{equation}
+    where $\nu$ is a fixed learning rate, or alternatively:
+    \begin{equation}
+    \nu_m = \arg\min_\nu \sum_i L(f^{[m-1]}(X_i) + \nu \times \hat{g}^{[m]}(X_i), Y_i)
+    \end{equation}
+\end{enumerate}
+
+\subsubsection{Connection to AdaBoost}
+AdaBoost can be viewed as a sequential method for finding the minimum of:
+\begin{equation}
+n^{-1}\sum_{i=1}^n L(Y_i, F(X_i))
+\end{equation}
+with loss function $L(y,f) = \exp(-yf)$ in the family of classification functions:
+\begin{equation}
+F(x) = \sum_{c=1}^C \gamma_c f_c(x)
+\end{equation}
+using stagewise additive modeling: 
+\begin{equation}
+F_m(x) = F_{m-1}(x) + \gamma_m f_m(x)
+\end{equation}
+
+\subsection{XGBoost (Extreme Gradient Boosting)}
+
+XGBoost is a modification of Greedy Forest (GF) that introduces several key improvements:
+
+\subsubsection{Key Differences from Standard Gradient Boosting}
+\begin{itemize}
+    \item \textbf{Regularization:} Includes regularization terms to prevent overfitting
+    \item \textbf{Second-order expansion:} Uses second-order Taylor expansion of the loss function for better optimization
+    \item \textbf{Smart greedy search:} Implements an efficient way to perform greedy search for optimal splits
+\end{itemize}
+
+\subsubsection{Improvements in XGBoost}
+\begin{itemize}
+    \item \textbf{Learning rate:} Introduction of learning rate for consecutive learners: $f_t := \eta \times f_t$
+    \item \textbf{Column subsampling:} Subsampling of predictors either locally (for each node) or globally (for the tree)
+    \item \textbf{Sparsity-aware split finding:} Choosing default directions with maximum gain for handling missing data
+\end{itemize}
+
+\subsection{Random Subspace Methods and Random Forests}
+
+\subsubsection{Random Subspace Method}
+The Random Subspace Method involves randomly choosing subsets of predictors to construct classifiers. This creates a large family of classifiers that can be combined into a committee.
+
+Examples include:
+\begin{itemize}
+    \item Random Forests (Breiman, 1999)
+    \item Extremely Randomized Trees (Geurts et al., 2006)
+\end{itemize}
+
+\subsubsection{Random Forests Algorithm}
+Random Forests (Forest-RI) proposed by Breiman combines bootstrap sampling with random feature selection:
+
+\begin{enumerate}
+    \item \textbf{Bootstrap sampling:} Randomly sample bootstrap samples of $n$ elements to construct unpruned trees
+    \item \textbf{Random feature selection:} In each non-terminal vertex, sample (without replacement) a subsample of $m$ predictors among $p$ total predictors
+    \item \textbf{Splitting:} Only chosen predictors are considered for the splitting rule
+    \item \textbf{Parameter selection:} Random choice of $m$ predictors is independent for each vertex
+\end{enumerate}
+
+\subsubsection{Variance Reduction}
+The variance of Random Forests is given by:
+\begin{equation}
+\text{Var}(\hat{f}_{bag}(x)) = \frac{1-\rho}{B}\sigma^2 + \rho\sigma^2 < \sigma^2
+\end{equation}
+
+By randomly selecting predictors at each vertex, Random Forests diminish the dependence between bootstrap classifiers relative to bagging, effectively reducing $\rho$.
+
+\subsubsection{Parameter Guidelines}
+\begin{itemize}
+    \item \textbf{Classification trees:} $m = \lfloor\sqrt{p}\rfloor$
+    \item \textbf{Regression trees:} $m = \lfloor p/3 \rfloor$
+    \item \textbf{Minimum observations:} Usually 5 per leaf
+\end{itemize}
+
+\subsection{Variable Importance (VI) Indices in Random Forests}
+
+\subsubsection{Basic Variable Importance}
+Random Forests provide a simple and intuitive method for ranking variables by importance:
+
+\begin{enumerate}
+    \item For a given variable $m$ and tree, subtract the number of correctly classified elements in the training sample from the corresponding number for the modified sample
+    \item Modification consists of randomly permuting values of variable $m$
+    \item If variable $m$ was not used in the tree, the difference equals 0
+    \item Variable Importance (VI) index is the average of differences calculated across all trees
+\end{enumerate}
+
+\subsubsection{Normalized VI (Z-statistic)}
+For more rigorous analysis, we calculate:
+\begin{equation}
+Z(x) = \frac{\text{Variable importance for } x}{\text{SD}}
+\end{equation}
+where SD denotes the standard deviation of accuracy differences for all trees that involved variable $x$.
+
+\textbf{Note:} $Z(x)$ does not follow a normal distribution, but it serves as a normalized VI index in the Boruta method.
+
+\subsection{Boruta Method}
+
+The Boruta algorithm (Kursa, Rudnicki, 2010) provides a principled approach to feature selection using Random Forests.
+
+\subsubsection{Shadow Variables}
+A \textbf{shadow} $x'$ of variable $x$ is constructed by random permutation of $x$ values. The empirical distributions of $x$ and $x'$ are identical, but $x'$ has no relationship with the target variable.
+
+\subsubsection{Boruta Algorithm}
+\begin{enumerate}
+    \item \textbf{Augment dataset:} Add shadow variables for all original predictors
+    \item \textbf{Fit Random Forest:} Use the augmented set of attributes and calculate $Z(x)$ statistic for each attribute
+    \item \textbf{Compute MZSA:} Calculate $\text{MZSA} = \max_{\text{shadows}} Z(x)$, which determines the maximal $Z(x)$ value for artificially created inactive variables
+    \item \textbf{Classification:} 
+    \begin{itemize}
+        \item Attributes with $Z(x)$ significantly larger than MZSA are \textbf{significant}
+        \item Attributes with $Z(x)$ significantly smaller than MZSA are \textbf{insignificant}
+        \item For remaining variables, perform heuristic test of hypothesis $H_0: Z(x) = \text{MZSA}$
+    \end{itemize}
+    \item \textbf{Remove variables:} Remove all variables deemed insignificant and all shadows
+    \item \textbf{Iterate:} Repeat until maximum number of iterations is reached
+\end{enumerate}
+
+\subsubsection{Alternative: Monte Carlo Feature Selection (MCFS)}
+MCFS applies the Random Subspace Method with a specially designed relative importance function:
+\begin{equation}
+RI_{g_k} = \sum_{\tau=1}^{st} wAcc_\tau \sum_{n_{g_k}(\tau)} GR(n_{g_k}) \left(\frac{\text{no. in } n_{g_k}}{\text{no. in } \tau}\right)^v
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $wAcc_\tau$: weighted accuracy of tree $\tau$
+    \item $n_{g_k}(\tau)$: vertex of tree $\tau$ where split was made based on $g_k$
+    \item $GR(n_{g_k})$: Gain Ratio in vertex $n_{g_k}$
+    \item $u, v$: positive parameters
+\end{itemize}
+
+\subsection{Summary}
+This section covered four major ensemble methods and feature selection techniques:
+\textbf{Functional Gradient Algorithm (Gradient Boosting)} builds strong predictors by sequentially adding weak learners that correct previous mistakes. Each iteration fits a model to the negative gradient of the loss function, creating an additive ensemble that minimizes empirical risk.
+\textbf{XGBoost} enhances gradient boosting with regularization, second-order optimization, and efficient implementation features like column subsampling and sparsity-aware splitting, making it highly effective for both competitions and practical applications.
+\textbf{Random Forests} combine bootstrap sampling with random feature selection at each split, reducing correlation between trees and achieving lower variance than standard bagging. The method uses rule-of-thumb parameters: $m = \lfloor\sqrt{p}\rfloor$ for classification and $m = \lfloor p/3\rfloor$ for regression.
+\textbf{Variable Importance in Random Forests} measures feature contribution by comparing prediction accuracy before and after randomly permuting each variable. The normalized Z-statistic provides a standardized importance measure.
+\textbf{Boruta Method} offers principled feature selection by comparing real variables against their "shadow" counterparts (randomly permuted versions). Variables significantly more important than the maximum shadow importance (MZSA) are deemed truly relevant, providing statistical rigor to feature selection.
+These methods represent different approaches to ensemble learning: gradient boosting focuses on sequential error correction, Random Forests emphasize variance reduction through randomization, and Boruta provides statistically sound feature selection for better model interpretability.
+
+\newpage
+\section{Question 9: Regression Estimation: nonlinear least squares, nonparametric regression estimation for small p: moving window, local least squares, natural cubic splines and their optimality}
+
+\textbf{Source files:} AML\_Regression\_I\_English\_II.pdf, AML\_Bayes\_optimality\_kernel\_estimator\_English.pdf, AML\_SVM\_English.pdf
+
+\subsection{Problem Setup}
+
+Consider the regression model:
+\begin{equation}
+Y = f(X) + \varepsilon
+\end{equation}
+where $(X,Y) \in \mathbb{R}^{p+1}$ is a random variable with $Y \in \mathbb{R}$, $\varepsilon$ is random error such that $E(\varepsilon|X = x) = 0$ for arbitrary $x$, and $f(x)$ is the regression function $f(x) = E(Y|X = x)$.
+
+Estimation is based on random sample $(X_1, Y_1), \ldots, (X_n, Y_n)$ where $X_1, \ldots, X_n$ can be random variables or a deterministic sequence.
+
+\subsection{Nonlinear Least Squares (NLS)}
+
+For parametric regression where $f(x,\alpha)$ depends on parameter vector $\alpha$, the principal estimation method is Nonlinear Least Squares.
+
+Given sample $(x_1, y_1), \ldots, (x_n, y_n)$, the NLS estimator is:
+\begin{equation}
+\hat{\alpha} = \arg\min_{\alpha} \sum_{i=1}^n (y_i - f(x_i, \alpha))^2 := Q(\alpha)
+\end{equation}
+
+The stationary point equations are:
+\begin{equation}
+\frac{\partial Q}{\partial \alpha_k} = \sum_{i=1}^n -2(y_i - f(x_i, \alpha))\frac{\partial f(x_i, \alpha)}{\partial \alpha_k} = 0, \quad k = 1, \ldots, q
+\end{equation}
+
+These equations are not explicitly solvable (except in the linear case) and require iterative methods such as:
+\begin{itemize}
+    \item Newton-Raphson method
+    \item Iteratively Reweighted Least Squares (IRLS)
+    \item Gauss-Newton algorithm
+\end{itemize}
+
+\subsection{Nonparametric Methods for Small p}
+
+For nonparametric regression estimation when $p$ is small, nothing is assumed about the form of $f$ apart from smoothness assumptions. The main methods include:
+
+\subsubsection{Moving Window (Moving Average) Estimator}
+
+The moving average estimator with bandwidth $h = h_n$ estimates $f(x) = E(Y|X = x)$ as:
+\begin{equation}
+\hat{f}_h(x) = \frac{1}{|N_h(x)|} \sum_{i: \|x_i - x\| \leq h} Y_i
+\end{equation}
+where $N_h(x) = \{i : \|x_i - x\| \leq h\}$ is the set of observations within distance $h$ from $x$.
+
+\textbf{Bias-Variance Trade-off:}
+\begin{itemize}
+    \item $h \uparrow \Rightarrow$ bias $\uparrow$, variance $\downarrow$
+    \item $h \downarrow \Rightarrow$ bias $\downarrow$, variance $\uparrow$
+\end{itemize}
+
+\subsubsection{Kernel Estimators}
+
+For a fixed probability density $K$ (kernel) and smoothing parameter $h_n$:
+\begin{equation}
+\hat{f}_h(x) = \frac{\sum_{i=1}^n K\left(\frac{x - x_i}{h}\right) Y_i}{\sum_{i=1}^n K\left(\frac{x - x_i}{h}\right)}
+\end{equation}
+
+The kernel $K$ is typically a probability density function with maximum at 0. Common choices include:
+\begin{itemize}
+    \item Uniform kernel: $K(u) = \frac{1}{2}I(|u| \leq 1)$
+    \item Gaussian kernel: $K(u) = \frac{1}{\sqrt{2\pi}}\exp(-u^2/2)$
+    \item Epanechnikov kernel: $K(u) = \frac{3}{4}(1-u^2)I(|u| \leq 1)$
+\end{itemize}
+
+\subsection{Local Least Squares (Locally Linear Estimator)}
+
+The locally linear estimator is based on weighted least squares where weights are related to distances from respective points $x_i$ to $x$. For fixed $x$, the following function is minimized:
+\begin{equation}
+\sum_{i=1}^n K\left(\frac{x - x_i}{h_n}\right)(Y_i - \beta_0(x) - \beta(x)^T(x_i - x))^2
+\end{equation}
+with respect to $\beta_0(x)$ and $\beta(x)$, where $K$ is a density function on $\mathbb{R}^p$ having maximum at 0.
+
+The locally linear estimator is:
+\begin{equation}
+\hat{f}_{loc}(x) = \hat{\beta}_0(x)
+\end{equation}
+
+\subsubsection{Weighted Least Squares Interpretation}
+
+For fixed $h$ and $x$, this becomes a Weighted Least Squares problem with:
+\begin{equation}
+w_i = K\left(\frac{x - x_i}{h_n}\right), \quad \tilde{x}_i := x_i - x
+\end{equation}
+
+\subsubsection{Cross-Validation for Bandwidth Selection}
+
+The bandwidth is usually chosen by cross-validation:
+\begin{equation}
+h_{n,CV} = \arg\min_h \sum_{i=1}^n (Y_i - \hat{f}_{loc}^{-i}(x_i))^2
+\end{equation}
+where $\hat{f}_{loc}^{-i}$ is the locally linear estimator based on the whole sample with observation $(x_i, y_i)$ omitted.
+
+\textbf{Implementation note:} The function \texttt{loess} in R implements locally linear regression.
+
+\subsection{Natural Cubic Splines}
+
+\subsubsection{Smoothing Splines Formulation}
+
+For a specific family of functions $\mathcal{C}$, we minimize the criterion function:
+\begin{equation}
+\frac{1}{n}\sum_{i=1}^n (y_i - g(x_i))^2 + \lambda \int [g''(x)]^2 dx
+\end{equation}
+where $\lambda$ is a positive regularization constant. The second term penalizes variability of $g$.
+
+\subsubsection{Cubic Spline Definition}
+
+Let $[a,b]$ be an interval such that $x_1, \ldots, x_n \in [a,b]$ with knots:
+\begin{equation}
+a = t_0 < t_1 < \ldots < t_n < b < t_{n+1}
+\end{equation}
+
+A cubic spline satisfies:
+\begin{itemize}
+    \item $f|_{(t_i, t_{i+1})}$ is a polynomial of degree $\leq 3$
+    \item $f \in C^2[a,b]$ (continuous second derivative)
+    \item For natural cubic spline: $f$ is linear on $[t_0, t_1]$ and $[t_n, t_{n+1}]$, which implies $f''(a) = f''(b) = 0$
+\end{itemize}
+
+\subsubsection{Optimality of Natural Cubic Splines}
+
+\textbf{Theorem 1 (Existence and Uniqueness):} Given $a = t_0 < t_1 < \ldots < t_n < b < t_{n+1}$ with $n \geq 2$, and $z_1, \ldots, z_n \in \mathbb{R}$, there exists a unique natural cubic spline $f$ such that:
+\begin{equation}
+f(t_i) = z_i, \quad i = 1, \ldots, n
+\end{equation}
+
+\textbf{Theorem 2 (Optimality):} Let $f$ be the spline satisfying Theorem 1 and $g \in C^2[a,b]$ such that $g(t_i) = z_i$ for $i = 1, \ldots, n$. Then:
+\begin{equation}
+\int [f''(x)]^2 dx \leq \int [g''(x)]^2 dx
+\end{equation}
+
+\textbf{Corollary:} For $\mathcal{C} = C^2[a,b]$, the solution to the optimization problem is a natural smoothing spline.
+
+\textbf{Proof sketch:} The conclusion follows from Theorem 2. For any $g \in C^2[a,b]$ being a solution, consider $z_i = g(t_i)$ and apply Theorem 2.
+
+\subsection{Cross-Validation for Linear Smoothers}
+
+Kernel estimators, local linear regression estimators, and splines are \textbf{linear smoothers}, meaning:
+\begin{equation}
+\hat{f}_\lambda = S_\lambda Y
+\end{equation}
+where $Y = (Y_1, \ldots, Y_n)^T$, $\hat{f}_\lambda = (f(x_1), \ldots, f(x_n))^T$, and $S_\lambda$ is the smoother matrix. For locally linear smoothers, $\lambda$ corresponds to the bandwidth $h$.
+
+\subsubsection{Computational Shortcut for Cross-Validation}
+
+For linear smoothers, cross-validation can be computed efficiently using the following computational shortcut:
+\begin{equation}
+CV(\hat{f}_\lambda) = \frac{1}{n}\sum_{i=1}^n (Y_i - \hat{f}^{-i}(x_i))^2 = \frac{1}{n}\sum_{i=1}^n \left(\frac{Y_i - \hat{f}(x_i)}{1 - S_\lambda(i,i)}\right)^2
+\end{equation}
+
+This formula avoids the computational burden of fitting $n$ different models by exploiting the linear structure. For linear regression, $S_\lambda = X(X^TX)^{-1}X^T = H$, recovering the familiar formula from linear models.
+
+\subsection{Generalized Cross-Validation (GCV)}
+
+\subsubsection{Motivation and Justification}
+
+In linear models fitted using least squares, we have:
+\begin{equation}
+CV = \sum_{i=1}^n (Y_i - \hat{Y}_{i,-i})^2 = \sum_{i=1}^n e_{i,-i}^2 = \sum_{i=1}^n \frac{e_i^2}{(1 - h_{ii})^2}
+\end{equation}
+where $e_i$ are the residuals and $h_{ii}$ are the diagonal elements of the hat matrix $H$.
+
+The idea of GCV is to replace the individual diagonal elements $h_{ii}$ with their average $\bar{h} = \frac{1}{n}\text{tr}(H) = \frac{p}{n}$, where $p$ is the number of parameters. This gives:
+\begin{equation}
+GCV = \sum_{i=1}^n \frac{e_i^2}{(1 - \bar{h})^2} = \frac{\sum_{i=1}^n e_i^2}{(1 - p/n)^2}
+\end{equation}
+
+\subsubsection{GCV for Nonlinear Models}
+
+For nonlinear models and general smoothers, GCV extends to:
+\begin{equation}
+GCV(\lambda) = \frac{\sum_{i=1}^n (y_i - \hat{f}_\lambda(x_i))^2}{(1 - M(\lambda)/n)^2}
+\end{equation}
+where:
+\begin{itemize}
+    \item $\lambda$ represents the model complexity parameter (e.g., bandwidth, number of terms)
+    \item $M(\lambda)$ is the \textbf{effective number of parameters}
+\end{itemize}
+
+\subsubsection{Effective Number of Parameters}
+
+The effective number of parameters $M(\lambda)$ quantifies model complexity:
+
+\textbf{For linear smoothers:}
+\begin{equation}
+M(\lambda) = \text{tr}(S_\lambda) = \sum_{i=1}^n S_\lambda(i,i)
+\end{equation}
+
+\textbf{For spline models:}
+\begin{equation}
+M(\lambda) = \text{number of independent basis functions} + 3 \times \text{number of knots}
+\end{equation}
+
+\textbf{For additive models (GAM):} $M(\lambda)$ is computed automatically and reported as the effective degrees of freedom (edf) for each smooth term.
+
+\subsubsection{Advantages of GCV}
+
+\begin{enumerate}
+    \item \textbf{Computational efficiency:} GCV requires only the trace of the smoother matrix rather than all diagonal elements
+    \item \textbf{Rotational invariance:} GCV is invariant to orthogonal transformations of the data
+    \item \textbf{Theoretical justification:} Under certain conditions, GCV provides an approximately unbiased estimate of the prediction error
+    \item \textbf{Automatic selection:} GCV provides a fully automatic way to select smoothing parameters without requiring additional tuning
+\end{enumerate}
+
+\subsubsection{GCV vs. Ordinary Cross-Validation}
+
+\textbf{Ordinary CV:}
+\begin{equation}
+CV(\lambda) = \frac{1}{n}\sum_{i=1}^n \left(\frac{Y_i - \hat{f}_\lambda(x_i)}{1 - S_\lambda(i,i)}\right)^2
+\end{equation}
+
+\textbf{GCV:}
+\begin{equation}
+GCV(\lambda) = \frac{\sum_{i=1}^n (Y_i - \hat{f}_\lambda(x_i))^2}{(1 - \text{tr}(S_\lambda)/n)^2}
+\end{equation}
+
+The key difference is that GCV uses the average leverage $\text{tr}(S_\lambda)/n$ instead of individual leverages $S_\lambda(i,i)$. This approximation is often very close to ordinary CV but much faster to compute.
+
+\subsection{Curse of Dimensionality}
+
+Nonparametric methods face the \textbf{curse of dimensionality} for large $p$. Consider estimating the regression function on $[0,1]^p$:
+\begin{itemize}
+    \item For $p=2$: Need $10 \times 10^2 = 1000$ observations for good estimation
+    \item For $p=3$: Need $10 \times 10^3 = 10000$ observations  
+    \item For $p$-dimensional space: Need $10 \times 10^p$ observations
+\end{itemize}
+
+The number of observations grows \textbf{exponentially} with dimension $p$. Methods for large $p$ typically impose structural assumptions (e.g., additive models, sparsity) to make the problem tractable.
+
+\subsection{Summary}
+
+This section covered fundamental regression estimation methods for different scenarios:
+
+\textbf{Nonlinear Least Squares} provides parameter estimation for parametric models $f(x,\alpha)$ by minimizing sum of squared residuals. The resulting equations require iterative solution methods since they lack closed-form solutions.
+
+\textbf{Moving window estimators} offer the simplest nonparametric approach by averaging nearby observations within bandwidth $h$. The bias-variance trade-off is controlled through bandwidth selection.
+
+\textbf{Kernel estimators} extend moving averages by using weighted averages with kernel functions, providing smoother estimates than moving windows while maintaining the same bias-variance trade-off principles.
+
+\textbf{Local least squares (locally linear estimators)} fit local linear models using weighted least squares, combining the flexibility of nonparametric methods with the bias reduction of linear fitting. The method has a natural interpretation as WLS and is implemented in the \texttt{loess} function.
+
+\textbf{Natural cubic splines} solve a regularized optimization problem balancing data fitting with smoothness. Their optimality is guaranteed by theoretical results showing they minimize the roughness penalty among all twice-differentiable interpolating functions.
+
+\textbf{Cross-validation} provides a principled approach for selecting smoothing parameters across all methods. For linear smoothers, efficient computational shortcuts avoid expensive leave-one-out calculations.
+
+These methods work well for small $p$ but face the curse of dimensionality for high-dimensional problems, necessitating structural assumptions or dimension reduction techniques.
+
+\newpage
+\section{Question 10: Nonparametric regression estimation for large p: MARS (forward and backward step, GCV), additive model and back-fitting algorithm, non-parametric logistic regression and generalised IRLS}
+
+\textbf{Source files:} AML\_Regression\_I\_English\_II.pdf, AML\_Logistic\_English\_2.pdf
+
+\subsection{MARS (Multivariate Adaptive Regression Splines)}
+
+MARS addresses the limitations of regression trees for high-dimensional data by using continuous piecewise linear functions instead of discontinuous step functions.
+
+\subsubsection{Motivation and Limitations of Regression Trees}
+
+Regression trees have several drawbacks:
+\begin{itemize}
+    \item \textbf{Discontinuity:} Fitted function is constant on hypercubes and thus discontinuous
+    \item \textbf{Poor for additive models:} Not effective for models of the form $y = f_1(x_1) + \ldots + f_p(x_p) + \varepsilon$
+    \item \textbf{Instability:} Small changes in data can drastically alter tree structure
+\end{itemize}
+
+A tree regression estimator has the form:
+\begin{equation}
+\hat{g}(x) = \sum_{j=1}^p c_j B_j(x)
+\end{equation}
+where
+\begin{equation}
+B_j(x) = I(x \in N_j) = \prod_l H(\pm(x_{v(l)} - t_l)), \quad H(s) = I\{s \geq 0\}
+\end{equation}
+
+\subsubsection{MARS Approach}
+
+\textbf{Key idea:} Replace the discontinuous step function $H(x)$ with continuous piecewise linear functions of the form $(\pm(x - t)_+)$ and adaptively choose the summands.
+
+\subsubsection{MARS Base Functions}
+
+The family of base functions is:
+\begin{equation}
+\mathcal{C} = \{(x_j - t)_+, (t - x_j)_+\}_{j=1,\ldots,p}, \quad t \in \{x_{1j}, \ldots, x_{nj}\}
+\end{equation}
+where knots $t$ are placed at observed values of predictors in the data.
+
+\subsubsection{MARS Model}
+
+The model has the form:
+\begin{equation}
+g(x) = E(Y|X = x) = \beta_0 + \sum_{m=1}^K \beta_m h_m(x)
+\end{equation}
+where $h_m \in \mathcal{C}$ or is a product of elements from $\mathcal{C}$, and $(\beta_0, \beta_1, \ldots, \beta_K)$ are estimated by least squares.
+
+\subsection{MARS Algorithm}
+
+\subsubsection{Forward Step}
+
+\textbf{Initialization:} $M_0$ consists of a constant $h_0(x) \equiv 1$.
+
+\textbf{Step $M+1$:} Given $M_M = \{h_0, \ldots, h_{2M}\}$, search for a function of the form:
+\begin{equation}
+h(x) + \hat{\beta}_{2M+1} h_l(x)(x_j - t)_+ + \hat{\beta}_{2M+2} h_l(x)(t - x_j)_+
+\end{equation}
+where $h_l \in M_M$ and $h(\cdot)$ is a linear combination of functions from $M_M$.
+
+The optimization seeks the combination that yields the largest decrease in Sum of Squared Errors (SSE), optimizing over:
+\begin{itemize}
+    \item Coefficients of the linear combination $h(x)$
+    \item Parameters $\hat{\beta}_{2M+1}$ and $\hat{\beta}_{2M+2}$
+    \item Choice of $h_l \in M_M$, variable $j$, and knot $t$
+\end{itemize}
+
+\textbf{Update:} $M_{M+1} = M_M \cup \{h_{l_0}(x)(x_{j_0} - t_0)_+, h_{l_0}(x)(t_0 - x_{j_0})_+\}$
+
+Continue until a specified model size is reached.
+
+\subsubsection{Backward Step (Pruning)}
+
+After the forward step builds a large model, backward elimination is performed to avoid overfitting. This involves removing terms that do not significantly contribute to model fit.
+
+\subsection{Generalized Cross-Validation (GCV) in MARS}
+
+For model selection in MARS, GCV is minimized:
+\begin{equation}
+GCV(\lambda) = \frac{\sum_{i=1}^n (y_i - \hat{f}_\lambda(x_i))^2}{(1 - M(\lambda)/n)^2}
+\end{equation}
+where:
+\begin{itemize}
+    \item $\lambda$ represents the model size (number of terms)
+    \item $M(\lambda)$ is the effective number of parameters:
+    \begin{equation}
+    M(\lambda) = \text{number of independent basis functions} + 3 \times \text{number of knots}
+    \end{equation}
+\end{itemize}
+
+\textbf{Computational efficiency:} MARS uses shortcuts when calculating hinge functions with new inflection points based on existing hinge functions. The search starts with the hinge corresponding to the rightmost uppermost value of the coordinate.
+
+\subsection{Additive Models}
+
+\subsubsection{Model Specification}
+
+Consider a random vector $(Y, X) \in \mathbb{R}^{p+1}$ where $X = (X_1, \ldots, X_p)^T$ satisfies:
+\begin{equation}
+Y = \alpha + \sum_{j=1}^p f_j(X_j) + \varepsilon
+\end{equation}
+where $f_j$ are unknown smooth functions and $\varepsilon$ is random error with $E[\varepsilon] = 0$.
+
+\textbf{Identifiability constraint:} The model is over-parametrized, so we assume $E[f_j(X_j)] = 0$ for every $j$, which implies $\alpha = E[Y]$.
+
+\subsubsection{Theoretical Foundation}
+
+The back-fitting algorithm is based on the assumption that:
+\begin{equation}
+E\left(Y - \alpha - \sum_{j \neq k} f_j(X_j) \Big| X_k = x\right) = f_k(x)
+\end{equation}
+
+\subsection{Back-Fitting Algorithm}
+
+\subsubsection{Algorithm for Additive Regression}
+
+\textbf{Step 0 (Initialization):}
+\begin{align}
+\hat{\alpha} &= \bar{y} \\
+f_j^{[0]} &\equiv 0, \quad j = 1, \ldots, p
+\end{align}
+
+\textbf{Iterative Steps:} Repeat in cycles $j = 1, \ldots, p, 1, \ldots, p, \ldots$ until the difference between consecutive iterations is smaller than tolerance $\varepsilon$ (in supremum norm):
+
+For each $j$, compute $f_j^{[k]}$ as a nonparametric estimator (e.g., spline) of the regression function $f_j$ based on residuals of the form:
+\begin{equation}
+\left(x_j, y - \sum_{l \neq j} f_l^{[k-1]}(x_l)\right)
+\end{equation}
+
+\subsubsection{Practical Implementation}
+
+\textbf{R Implementation:} The \texttt{gam} function in the \texttt{mgcv} library implements additive models with automatic smoothing parameter selection.
+
+Example syntax: \texttt{gam(O3 \textasciitilde s(temp) + s(ibh) + s(ibt), data=ozone)}
+
+The output provides:
+\begin{itemize}
+    \item Effective degrees of freedom (edf) for each smooth term
+    \item Statistical significance tests
+    \item GCV score for model comparison
+    \item Adjusted $R^2$ and deviance explained
+\end{itemize}
+
+\subsection{Nonparametric Logistic Regression}
+
+\subsubsection{Model Specification}
+
+The nonparametric logistic model extends standard logistic regression by allowing nonlinear effects:
+\begin{equation}
+\log \frac{P(Y = 1|x)}{P(Y = 0|x)} = \alpha + f_1(X_1) + \ldots + f_p(X_p)
+\end{equation}
+where $f_1, \ldots, f_p$ are smooth functions.
+
+Compare this to standard logistic regression:
+\begin{equation}
+\log \frac{P(Y = 1|x)}{P(Y = 0|x)} = \alpha + \beta_1 X_1 + \ldots + \beta_p X_p
+\end{equation}
+
+\subsection{Generalized IRLS for Nonparametric Logistic Regression}
+
+\subsubsection{Standard IRLS Algorithm}
+
+For parametric logistic regression, IRLS uses the Newton-Raphson method to find $\boldsymbol{\beta}$ such that $\frac{\partial \ell}{\partial \boldsymbol{\beta}} = 0$:
+
+\begin{equation}
+\boldsymbol{\beta}^{new} = \boldsymbol{\beta}^{old} - H^{-1}(\boldsymbol{\beta}^{old}) \frac{\partial \ell}{\partial \boldsymbol{\beta}}\Big|_{\boldsymbol{\beta}=\boldsymbol{\beta}^{old}}
+\end{equation}
+
+This leads to the weighted least squares form:
+\begin{equation}
+\boldsymbol{\beta}^{new} = (X^T W X)^{-1} X^T W z
+\end{equation}
+where $z = X\boldsymbol{\beta}^{old} + W^{-1}(y - p)$ is the modified response and $W$ is the weight matrix.
+
+\subsubsection{Back-Fitting Algorithm for Nonparametric Logistic Regression}
+
+\textbf{Step 0 (Initialization):}
+\begin{align}
+\hat{\alpha} &= \bar{y} \\
+f_j^{[0]} &\equiv 0, \quad j = 1, \ldots, p
+\end{align}
+
+\textbf{Iterative Steps:}
+
+1. \textbf{Compute linear predictor and probabilities:}
+\begin{align}
+\hat{\eta}_i &= \hat{\alpha} + \sum_j \hat{f}_j(x_{ij}) \\
+\hat{p}_i &= \frac{1}{1 + \exp(-\hat{\eta}_i)}
+\end{align}
+
+2. \textbf{Define modified response and weights:}
+\begin{align}
+z_i &= \hat{\eta}_i + \frac{y_i - \hat{p}_i}{\hat{p}_i(1 - \hat{p}_i)} \\
+w_i &= \hat{p}_i(1 - \hat{p}_i)
+\end{align}
+
+3. \textbf{Fit additive model:} Use the back-fitting algorithm with responses $z_i$ and weights $w_i$ to obtain updated estimates $f_j^{[k]}$ and $\hat{\alpha}$.
+
+4. \textbf{Iterate:} Repeat until convergence or required accuracy is achieved.
+
+\subsubsection{Connection to Standard IRLS}
+
+The generalized IRLS maintains the same structure as standard IRLS but replaces:
+\begin{itemize}
+    \item Linear terms $\beta_j x_j$ with smooth functions $f_j(x_j)$
+    \item Standard least squares fitting with nonparametric regression (back-fitting)
+    \item Fixed design matrix with adaptive smoothing for each component
+\end{itemize}
+
+\subsection{Summary}
+
+This section covered advanced nonparametric methods for high-dimensional regression:
+
+\textbf{MARS (Multivariate Adaptive Regression Splines)} addresses regression tree limitations by using continuous piecewise linear basis functions. The forward step builds complexity through adaptive knot placement, while the backward step prevents overfitting. GCV provides automatic model selection with effective degrees of freedom accounting for both basis functions and knots.
+
+\textbf{Additive Models} decompose complex multidimensional relationships into sums of univariate smooth functions, making high-dimensional nonparametric regression tractable. The additive structure preserves interpretability while avoiding the curse of dimensionality.
+
+\textbf{Back-fitting Algorithm} provides an iterative solution for additive models by alternately updating each component function using residuals from other components. This approach extends naturally to generalized additive models.
+
+\textbf{Nonparametric Logistic Regression} extends logistic regression to allow nonlinear effects while maintaining the logistic structure. The log-odds are modeled as additive smooth functions rather than linear combinations.
+
+\textbf{Generalized IRLS} adapts the standard IRLS algorithm for nonparametric logistic regression by replacing linear updates with nonparametric fitting steps. The algorithm maintains the weighted least squares structure but uses back-fitting for the smooth components.
+
+These methods provide powerful tools for modeling complex, high-dimensional relationships while maintaining computational tractability and interpretability through the additive structure.
+
+\newpage
+
+\section{Question 11: Classification for p>n: regularised LDF and QDF, Nearest Shrunken Centroids method, Lasso and its variants, two-step procedures}
+
+\textbf{Source files:} AML\_LDA\_QDA\_English.pdf, AML\_Committees\_II\_English.pdf, AML\_Semisupervised\_PU\_English.pdf
+
+\subsection{The High-Dimensional Classification Problem}
+
+When the number of features $p$ exceeds the number of observations $n$ (i.e., $p > n$), classical classification methods face fundamental challenges:
+
+\subsubsection{Parameter Estimation Challenges}
+
+\textbf{LDA Parameter Requirements:}
+\begin{itemize}
+    \item Estimation of $gp + \frac{p(p+1)}{2}$ parameters
+    \item Common covariance matrix $\boldsymbol{\Sigma}$ requires $\frac{p(p+1)}{2}$ parameters
+    \item Class means require $gp$ parameters ($g$ classes, $p$ features each)
+\end{itemize}
+
+\textbf{QDA Parameter Requirements:}
+\begin{itemize}
+    \item Estimation of $g \cdot \frac{p(p+3)}{2}$ parameters
+    \item Each class-specific covariance matrix $\boldsymbol{\Sigma}_k$ requires $\frac{p(p+1)}{2}$ parameters
+    \item Much more complex than LDA due to separate covariance matrices
+\end{itemize}
+
+\textbf{Fundamental Problem:} When $p > n$, the sample covariance matrix is singular, making standard LDA/QDA impossible to apply directly.
+
+\subsection{Regularized Linear Discriminant Functions (LDF)}
+
+\subsubsection{Regularized LDA}
+
+To address the singularity problem, regularized LDA modifies the covariance matrix estimate:
+
+\begin{equation}
+\hat{\boldsymbol{\Sigma}}(\alpha) = \alpha \mathbf{I}_{p \times p} + (1-\alpha)\hat{\boldsymbol{\Sigma}}, \quad 0 < \alpha < 1
+\end{equation}
+
+\textbf{Key Properties:}
+\begin{itemize}
+    \item \textbf{Improved conditioning:} The condition number is decreased:
+    \begin{equation}
+    \frac{\lambda_{\max}(\alpha \mathbf{I} + (1-\alpha)\hat{\boldsymbol{\Sigma}})}{\lambda_{\min}(\alpha \mathbf{I} + (1-\alpha)\hat{\boldsymbol{\Sigma}})} < \frac{\lambda_{\max}(\hat{\boldsymbol{\Sigma}})}{\lambda_{\min}(\hat{\boldsymbol{\Sigma}})}
+    \end{equation}
+    \item \textbf{Invertibility:} The regularized matrix is always invertible for $\alpha > 0$
+    \item \textbf{Bias-variance trade-off:} $\alpha$ controls the trade-off between bias and variance
+\end{itemize}
+
+\subsubsection{Parameter Selection}
+
+The regularization parameter $\alpha$ is chosen using:
+\begin{itemize}
+    \item \textbf{Cross-validation:} Minimize classification error on validation sets
+    \item \textbf{Test set validation:} Use separate holdout data for parameter tuning
+    \item \textbf{Information criteria:} AIC, BIC, or similar model selection criteria
+\end{itemize}
+
+\subsection{Regularized Quadratic Discriminant Functions (QDF)}
+
+\subsubsection{Regularized QDA}
+
+For QDA, each class-specific covariance matrix is regularized:
+
+\begin{equation}
+\hat{\boldsymbol{\Sigma}}_k(\alpha) = \alpha\hat{\boldsymbol{\Sigma}}_k + (1-\alpha)\hat{\boldsymbol{\Sigma}}, \quad k = 1, \ldots, g
+\end{equation}
+
+where $\hat{\boldsymbol{\Sigma}}$ is the pooled covariance matrix estimate.
+
+\textbf{Alternative formulation:}
+\begin{equation}
+\hat{\boldsymbol{\Sigma}}_k(\alpha) = \alpha \mathbf{I}_{p \times p} + (1-\alpha)\hat{\boldsymbol{\Sigma}}_k
+\end{equation}
+
+\subsubsection{Computational Considerations}
+
+\textbf{Advantages of regularization:}
+\begin{itemize}
+    \item Ensures numerical stability in high-dimensional settings
+    \item Reduces overfitting by shrinking extreme eigenvalues
+    \item Maintains the interpretability of LDA/QDA framework
+\end{itemize}
+
+\subsection{Nearest Shrunken Centroids Method}
+
+\subsubsection{Motivation and Connection to Naive Bayes}
+
+The Nearest Shrunken Centroids (NSC) method is based on modifying LDA using the idea of Naive Bayes. In the context of LDA, this translates to assuming:
+
+\begin{equation}
+\boldsymbol{\Sigma} = \text{diag}(\sigma_1^2, \ldots, \sigma_p^2)
+\end{equation}
+
+This diagonal structure assumes feature independence, dramatically reducing the number of parameters from $\frac{p(p+1)}{2}$ to just $p$.
+
+\subsubsection{Shrinkage Mechanism}
+
+NSC applies shrinkage to class centroids by:
+
+\begin{enumerate}
+    \item \textbf{Standardization:} Features are standardized to have equal variance
+    \item \textbf{Centroid computation:} Calculate class-specific centroids $\bar{\mathbf{x}}_k$
+    \item \textbf{Shrinkage:} Apply soft thresholding to move centroids toward the overall centroid
+    \item \textbf{Feature selection:} Features with heavily shrunk centroids are effectively eliminated
+\end{enumerate}
+
+\subsubsection{Mathematical Formulation}
+
+Let $d_{jk}$ be the standardized difference between class $k$ centroid and overall centroid for feature $j$:
+
+\begin{equation}
+d_{jk} = \frac{\bar{x}_{jk} - \bar{x}_j}{s_j \sqrt{\frac{1}{n_k} + \frac{1}{n}}}
+\end{equation}
+
+The shrunken centroid difference is:
+\begin{equation}
+d'_{jk} = \text{sign}(d_{jk}) \max(|d_{jk}| - \Delta, 0)
+\end{equation}
+
+where $\Delta \geq 0$ is the shrinkage parameter.
+
+\subsubsection{Advantages of NSC}
+
+\begin{itemize}
+    \item \textbf{Automatic feature selection:} Irrelevant features are automatically removed
+    \item \textbf{Interpretability:} Identifies which features distinguish each class
+    \item \textbf{Computational efficiency:} Diagonal covariance assumption reduces complexity
+    \item \textbf{Robustness:} Works well even when $p \gg n$
+\end{itemize}
+
+\subsection{Lasso and Its Variants}
+
+\subsubsection{Lasso for Classification}
+
+The Lasso (Least Absolute Shrinkage and Selection Operator) can be adapted for classification through various approaches:
+
+\textbf{Logistic Lasso:} For binary classification with logistic regression:
+\begin{equation}
+\min_{\boldsymbol{\beta}} \left\{ -\sum_{i=1}^n \left[ y_i \log p_i + (1-y_i) \log(1-p_i) \right] + \lambda \|\boldsymbol{\beta}\|_1 \right\}
+\end{equation}
+
+where $p_i = \frac{1}{1 + \exp(-\mathbf{x}_i^T \boldsymbol{\beta})}$.
+
+\subsubsection{Multi-class Extensions}
+
+\textbf{One-vs-All approach:} Train separate binary Lasso classifiers for each class:
+\begin{equation}
+\hat{\boldsymbol{\beta}}_k = \arg\min_{\boldsymbol{\beta}} \left\{ \sum_{i=1}^n L(y_i^{(k)}, \mathbf{x}_i^T \boldsymbol{\beta}) + \lambda \|\boldsymbol{\beta}\|_1 \right\}
+\end{equation}
+
+where $y_i^{(k)} = 1$ if observation $i$ belongs to class $k$, and $0$ otherwise.
+
+\textbf{Classification rule:}
+\begin{equation}
+\hat{\delta}(\mathbf{x}) = \arg\max_{k=1,\ldots,g} \mathbf{x}^T \hat{\boldsymbol{\beta}}_k
+\end{equation}
+
+\subsubsection{Variants of Lasso}
+
+\textbf{1. Elastic Net:} Combines $L_1$ and $L_2$ penalties:
+\begin{equation}
+\min_{\boldsymbol{\beta}} \left\{ L(\boldsymbol{\beta}) + \lambda_1 \|\boldsymbol{\beta}\|_1 + \lambda_2 \|\boldsymbol{\beta}\|_2^2 \right\}
+\end{equation}
+
+\textbf{2. Group Lasso:} For grouped variables:
+\begin{equation}
+\min_{\boldsymbol{\beta}} \left\{ L(\boldsymbol{\beta}) + \lambda \sum_{g=1}^G \sqrt{p_g} \|\boldsymbol{\beta}_g\|_2 \right\}
+\end{equation}
+
+\textbf{3. Stability Lasso:} Uses resampling techniques for more stable feature selection
+
+\subsubsection{Advantages of Lasso Approaches}
+
+\begin{itemize}
+    \item \textbf{Automatic feature selection:} $L_1$ penalty drives coefficients to exactly zero
+    \item \textbf{Sparsity:} Produces interpretable models with few active features
+    \item \textbf{Scalability:} Efficient algorithms available for large-scale problems
+    \item \textbf{Theoretical guarantees:} Well-studied statistical properties
+\end{itemize}
+
+\subsection{Two-Step Procedures}
+
+\subsubsection{General Framework}
+
+Two-step procedures decompose the high-dimensional classification problem into:
+
+\textbf{Step 1: Feature Selection/Dimensionality Reduction}
+\begin{itemize}
+    \item Identify relevant features or reduce dimensionality
+    \item Create a lower-dimensional representation where $p' < n$
+\end{itemize}
+
+\textbf{Step 2: Classification}
+\begin{itemize}
+    \item Apply standard classification methods to the reduced feature space
+    \item Use the selected features to build the final classifier
+\end{itemize}
+
+\subsubsection{Feature Selection Methods in Step 1}
+
+\textbf{1. Statistical Tests:}
+\begin{itemize}
+    \item Univariate t-tests for each feature
+    \item ANOVA F-tests for multi-class problems
+    \item Chi-square tests for categorical features
+\end{itemize}
+
+\textbf{2. Information-theoretic Methods:}
+\begin{itemize}
+    \item Mutual information between features and class labels
+    \item Information gain or gain ratio
+\end{itemize}
+
+\textbf{3. Model-based Selection:}
+\begin{itemize}
+    \item Forward/backward stepwise selection
+    \item Recursive feature elimination
+    \item Stability selection methods
+\end{itemize}
+
+\subsubsection{Stepwise Classification (Stepclass)}
+
+From the lecture materials, stepclass implements forward selection for classification:
+
+\textbf{Algorithm:}
+\begin{enumerate}
+    \item \textbf{Initialize:} Start with no features
+    \item \textbf{Forward selection:} Add the predictor that yields the smallest classification error
+    \item \textbf{Improvement threshold:} Continue adding variables only if classification error improves by more than a specified threshold (e.g., 1\%)
+    \item \textbf{Cross-validation:} Use 10-fold cross-validation to estimate classification error
+    \item \textbf{Stability:} Perform multiple runs and select features chosen most frequently
+\end{enumerate}
+
+\subsubsection{Dimensionality Reduction Approaches}
+
+\textbf{1. Principal Component Analysis (PCA):}
+\begin{itemize}
+    \item Project data onto first $k$ principal components
+    \item Apply classification to $k$-dimensional representation
+\end{itemize}
+
+\textbf{2. Partial Least Squares (PLS):}
+\begin{itemize}
+    \item Find linear combinations that maximize covariance with class labels
+    \item Supervised dimensionality reduction
+\end{itemize}
+
+\textbf{3. Linear Discriminant Analysis:}
+\begin{itemize}
+    \item Use Fisher's linear discriminant for dimensionality reduction
+    \item Project onto discriminant directions before classification
+\end{itemize}
+
+\subsubsection{Examples from Semi-supervised Learning}
+
+The lecture materials mention two-step procedures in the context of Positive-Unlabeled (PU) learning:
+
+\textbf{Procedure:}
+\begin{enumerate}
+    \item \textbf{Step 1:} Identify reliable negative examples from unlabeled data
+    \item \textbf{Step 2:} Use supervised learning with positive examples (P) and reliable negatives (RN)
+\end{enumerate}
+
+\textbf{Methods for Step 1:}
+\begin{itemize}
+    \item \textbf{K-means:} Cluster data and select negatives furthest from positives
+    \item \textbf{k-NN:} Rank unlabeled examples by distance to $k$ nearest positive examples
+    \item \textbf{Spy technique:} Use labeled examples as "spies" to identify reliable negatives
+\end{itemize}
+
+\subsection{Advanced Variable Selection Methods}
+
+\subsubsection{Stability Lasso}
+
+Mentioned in the lecture materials as a resampling-based approach:
+\begin{itemize}
+    \item Applies Lasso to multiple bootstrap samples
+    \item Selects features that are consistently chosen across samples
+    \item Provides more stable feature selection than single Lasso application
+\end{itemize}
+
+\subsubsection{Multi-split Method}
+
+Referenced in the context of high-dimensional data analysis:
+\begin{itemize}
+    \item Splits data into multiple parts for selection and validation
+    \item Uses sample splitting to avoid selection bias
+    \item Provides valid statistical inference after feature selection
+\end{itemize}
+
+\subsection{Summary}
+
+High-dimensional classification when $p > n$ requires specialized techniques to handle the curse of dimensionality:
+
+\textbf{Regularized LDA/QDA} address covariance matrix singularity through shrinkage, making classical discriminant analysis applicable in high-dimensional settings while maintaining interpretability and computational efficiency.
+
+\textbf{Nearest Shrunken Centroids} combines the simplicity of Naive Bayes assumptions with intelligent shrinkage, automatically performing feature selection while building interpretable classifiers that identify class-distinguishing features.
+
+\textbf{Lasso and variants} provide principled approaches to sparse classification through $L_1$ regularization, with extensions like Elastic Net and Group Lasso handling different data structures and providing theoretical guarantees.
+
+\textbf{Two-step procedures} decompose the problem into manageable parts: first reducing dimensionality or selecting features, then applying standard classification methods. This approach is flexible and can incorporate domain knowledge in the feature selection phase.
+
+These methods address different aspects of high-dimensional classification: regularization for numerical stability, sparsity for interpretability, and dimensionality reduction for computational efficiency. The choice between approaches depends on the specific problem structure, interpretability requirements, and available computational resources.
+
+\newpage
+\section{Question 12: Semi-supervised methods: self training, label propagation. Positive unlabeled problem: SCAR assumption, propensity score. ERM under SCAR}
+
+\textbf{Source files:} AML\_Semisupervised\_PU\_English.pdf
+
+\subsection{Semi-supervised Learning Framework}
+
+\subsubsection{Problem Setup}
+
+In semi-supervised learning, we observe two types of data:
+
+\textbf{Labeled Data:}
+\begin{equation}
+L = \{(x_1, y_1), \ldots, (x_l, y_l)\}
+\end{equation}
+where $y_1, \ldots, y_l$ are observed labels.
+
+\textbf{Unlabeled Data:}
+\begin{equation}
+U = \{(x_{l+1}, y_{l+1}), \ldots, (x_{l+u}, y_{l+u})\}
+\end{equation}
+where $y_{l+1}, \ldots, y_{l+u}$ are not observable, sampled from the whole population.
+
+\textbf{Key characteristic:} Frequently $l \ll u$ (much fewer labeled than unlabeled examples).
+
+\textbf{Attribute space:} $x_i \in \mathcal{X}$, e.g., $\mathcal{X} = \mathbb{R}^p$.
+
+\subsection{Self-Training}
+
+\subsubsection{Algorithm for Binary Classification}
+
+Self-training iteratively expands the labeled dataset by adding confidently predicted unlabeled examples.
+
+\textbf{Initialization:}
+\begin{align}
+\tilde{y}_i &= y_i \quad \text{for } i \in L \\
+\tilde{y}_i &= \text{NA} \quad \text{for } i \in U
+\end{align}
+
+\textbf{Iterative Process:}
+\begin{enumerate}
+    \item \textbf{Train model:} Fit posterior probability model $h : \mathcal{X} \to [0,1]$ based on current labeled set $L$
+    \item \textbf{Predict probabilities:} For $i \in U$, compute $h(x_i) = \hat{P}(y_i = 1|x_i)$
+    \item \textbf{Confident labeling:} For threshold parameter $\tau$ (typically $\tau \in \{0.75, 0.9, 0.95\}$):
+    \begin{align}
+    \text{If } h(x_i) > \tau &\Rightarrow \tilde{y}_i = 1 \\
+    \text{If } h(x_i) < 1-\tau &\Rightarrow \tilde{y}_i = 0
+    \end{align}
+    \item \textbf{Update labeled set:} $A = \{i \in U : \tilde{y}_i \neq \text{NA}\}$, then $L \leftarrow L \cup A$
+    \item \textbf{Repeat} until convergence or maximum iterations
+\end{enumerate}
+
+\subsubsection{Alternative Strategy}
+
+Instead of using thresholds, select $k$ observations from $U$ with the highest confidence (largest $\max(h(x_i), 1-h(x_i))$) in each iteration. Default: $k = 10$ (scikit-learn).
+
+\subsubsection{Calibration of Classification Functions}
+
+Many classification methods don't yield reliable posterior probability estimates. For such methods, use \textbf{Platt's calibration}:
+
+Given classification function $d(x)$ learned on training data, fit logistic model on validation set:
+\begin{equation}
+P(y_i = 1|d(x_i)) = \frac{1}{1 + \exp(a \cdot d(x_i) + b)}, \quad a, b \in \mathbb{R}
+\end{equation}
+
+Use $\hat{P}(y = 1|d(x))$ in self-training instead of raw classification scores.
+
+\subsection{Label Propagation}
+
+\subsubsection{Core Principle}
+
+\textbf{Smoothness assumption:} Observations close in feature space $\mathcal{X}$ are likely to belong to the same class. Labeled observations act as sources that propagate their labels through dense unlabeled regions.
+
+\subsubsection{Graph Construction}
+
+\textbf{Vertices:} All observations $x_1, \ldots, x_l, x_{l+1}, \ldots, x_{l+u}$ (both labeled and unlabeled).
+
+\textbf{Edge weights:} Measure similarity between observations. Common choice:
+\begin{equation}
+w_{ij} = \exp\left(-\frac{d_{ij}^2}{\sigma^2}\right) = \exp\left(-\frac{\sum_{k=1}^p (x_i^k - x_j^k)^2}{\sigma^2}\right)
+\end{equation}
+where $\sigma$ is a bandwidth parameter controlling the locality of influence.
+
+\textbf{Alternative weights:} Other similarity measures possible for nominal and discrete attributes.
+
+\subsubsection{Label Propagation Algorithm}
+
+\begin{enumerate}
+    \item \textbf{Initialize:} Set initial labels for labeled data, unknown labels for unlabeled data
+    \item \textbf{Propagate:} Update labels of unlabeled nodes based on weighted average of neighbor labels
+    \item \textbf{Iterate:} Repeat propagation until convergence
+    \item \textbf{Classify:} Assign final labels based on propagated values
+\end{enumerate}
+
+The algorithm effectively diffuses label information through the similarity graph, with stronger connections facilitating faster label transfer.
+
+\subsection{Positive Unlabeled (PU) Learning}
+
+\subsubsection{Problem Formulation}
+
+In PU learning, we observe:
+
+\textbf{Positive Labeled Data:}
+\begin{equation}
+L = \{(x_1, 1), \ldots, (x_l, 1)\}
+\end{equation}
+All labeled examples belong to the positive class ($Y = 1$).
+
+\textbf{Unlabeled Data:}
+\begin{equation}
+U = \{(x_{l+1}, y_{l+1}), \ldots, (x_{l+u}, y_{l+u})\}
+\end{equation}
+Sampled from the whole population, containing both positive and negative examples.
+
+\subsubsection{Key Quantities in PU Learning}
+
+\textbf{Label Frequency:}
+\begin{equation}
+c := P(S = 1|Y = 1)
+\end{equation}
+Probability of being labeled given that the observation is positive.
+\begin{itemize}
+    \item $c \approx 1$: Most positive observations are labeled
+    \item $c \approx 0$: Very few positive observations are labeled
+\end{itemize}
+
+\textbf{Propensity Score Function:}
+\begin{equation}
+e(x) := P(S = 1|Y = 1, X = x)
+\end{equation}
+Probability of being labeled given that the observation is positive with features $x$.
+
+\subsection{SCAR Assumption}
+
+\subsubsection{Selected Completely at Random (SCAR)}
+
+\textbf{Definition:}
+\begin{equation}
+P(S = 1|Y = 1, x) = P(S = 1|Y = 1) = c
+\end{equation}
+
+\textbf{Interpretation:} Labeled examples are selected randomly from positive examples, independently of features $X$. The propensity score is constant: $e(x) = c$.
+
+\subsubsection{Properties Under SCAR}
+
+\textbf{Theorem:} Under SCAR assumption, the following properties hold:
+
+\textbf{1. Relationship between posterior probabilities:}
+\begin{equation}
+P(S = 1|X = x) = c \cdot P(Y = 1|X = x)
+\end{equation}
+
+\textbf{2. Distributional equality:}
+\begin{equation}
+P(X|Y = 1) = P(X|S = 1)
+\end{equation}
+
+\textbf{Consequence:} For small $c$, we have $P(S = 1|X = x) \ll P(Y = 1|X = x)$ (large bias).
+
+\subsubsection{Simple Estimator for Label Frequency}
+
+Using the relationship $P(S = 1|X = x) = c \cdot P(Y = 1|X = x) \leq c$:
+
+\textbf{Algorithm:}
+\begin{enumerate}
+    \item Estimate $P(S = 1|X = x)$ using naive learning (treat unlabeled as negative)
+    \item Define estimator: $\hat{c} = \max_x \hat{P}(S = 1|X = x)$
+\end{enumerate}
+
+\subsection{Empirical Risk Minimization (ERM) under SCAR}
+
+\subsubsection{Risk Function for True Labels}
+
+Consider logistic model $P(Y = 1|x) = \sigma(x^T \beta)$ where $\sigma(s) = (1 + \exp(-s))^{-1}$.
+
+\textbf{Standard risk function:}
+\begin{equation}
+R(\beta) = -E_{X,Y}[Y \log(\sigma(X^T \beta)) + (1-Y) \log(1-\sigma(X^T \beta))]
+\end{equation}
+
+\subsubsection{Risk Transformation under SCAR}
+
+\textbf{Theorem:} Under SCAR, the risk function can be rewritten as:
+\begin{equation}
+R(\beta) = -E_X[P(S = 1|X) \log(\sigma(X^T \beta)) + w(X)P(S = 0|X) \log(1-\sigma(X^T \beta)) + (1-w(X))P(S = 0|X) \log(\sigma(X^T \beta))]
+\end{equation}
+
+where the weight function is:
+\begin{equation}
+w(x) = P(Y = 0|S = 0, X = x) = 1 - \frac{1-c}{c} \frac{s(x)}{1-s(x)}
+\end{equation}
+
+and $s(x) = P(S = 1|X = x)$.
+
+\subsubsection{Empirical Risk Minimization}
+
+\textbf{Empirical risk function:}
+\begin{equation}
+\hat{R}(\beta) = -\frac{1}{n}\sum_{i=1}^n \left[ s_i \log[\sigma(\beta^T x_i)] + (1-s_i) \log[\sigma(\beta^T x_i)](1-w(x_i)) + (1-s_i) \log[1-\sigma(\beta^T x_i)]w(x_i) \right]
+\end{equation}
+
+\textbf{Weighted Method Algorithm:}
+\begin{enumerate}
+    \item \textbf{Estimate observation probabilities:} $\hat{s}(x) = \hat{P}(S = 1|X = x)$ using naive learning
+    \item \textbf{Estimate label frequency:} $\hat{c}$ using methods described above
+    \item \textbf{Compute weights:} $\hat{w}(x_i)$ based on $\hat{s}(x_i)$ and $\hat{c}$
+    \item \textbf{Minimize empirical risk:} Solve weighted ERM problem
+\end{enumerate}
+
+\subsubsection{Joint Estimation Method}
+
+Alternative approach that jointly estimates parameters and label frequency:
+
+\textbf{Empirical risk:}
+\begin{equation}
+\hat{R}(b, c) = -\frac{1}{n}\sum_{i=1}^n [s_i \log(c\sigma(x_i^T b)) + (1-s_i) \log(1-c\sigma(x_i^T b))]
+\end{equation}
+
+\textbf{Estimator:}
+\begin{equation}
+(\hat{b}, \hat{c}) = \arg\min_{b,c} \hat{R}(b, c)
+\end{equation}
+
+\textbf{Final probability estimate:}
+\begin{equation}
+\hat{P}(Y = 1|X = x) = [1 + \exp(-x^T \hat{b})]^{-1}
+\end{equation}
+
+\subsection{Learning Under Selection Bias}
+
+\subsubsection{Limitations of SCAR}
+
+SCAR assumption is unrealistic in many applications. For example, probability of disease diagnosis may depend on:
+\begin{itemize}
+    \item Patient age
+    \item Presence of other diseases  
+    \item Genetic factors
+    \item Health insurance status
+    \item Geographic location
+\end{itemize}
+
+\subsubsection{General Propensity Score}
+
+When SCAR doesn't hold, must estimate propensity score function:
+\begin{equation}
+e(x) := P(S = 1|Y = 1, X = x)
+\end{equation}
+
+\textbf{Challenge:} This is difficult since we don't observe true labels $Y$.
+
+\textbf{General weight function:}
+\begin{equation}
+w(x) = P(Y = 0|S = 0, X = x) = 1 - \frac{1-e(x)}{e(x)} \frac{s(x)}{1-s(x)}
+\end{equation}
+
+\subsubsection{Probabilistic Gap Assumption}
+
+\textbf{Probabilistic gap:}
+\begin{equation}
+\Delta_P(x) = P(Y = 1|X = x) - P(Y = 0|X = x) = 2P(Y = 1|X = x) - 1
+\end{equation}
+
+\textbf{Probabilistic Gap assumption:} Propensity score is a non-negative, monotone increasing function of the probabilistic gap:
+\begin{equation}
+e(x) = P(S = 1|Y = 1, X = x) = f(\Delta_P(x))
+\end{equation}
+
+\textbf{Interpretation:} Observations with higher posterior probability $P(Y = 1|X = x)$ are more likely to be labeled.
+
+\subsection{Summary}
+
+This section covered fundamental approaches to learning with limited supervision:
+
+\textbf{Semi-supervised Learning} leverages both labeled and unlabeled data through two main paradigms: self-training iteratively expands labeled data using confident predictions, while label propagation uses graph-based similarity to diffuse labels through unlabeled regions.
+
+\textbf{Self-training} provides a simple iterative framework that can work with any base classifier capable of producing probability estimates. The method requires careful threshold selection and proper probability calibration for non-probabilistic classifiers.
+
+\textbf{Label Propagation} exploits the smoothness assumption that nearby observations should have similar labels. The method constructs similarity graphs and propagates label information through weighted connections, making it particularly effective when the similarity structure aligns with class boundaries.
+
+\textbf{Positive Unlabeled Learning} addresses the specific case where only positive examples are labeled. The SCAR assumption simplifies the problem by assuming random labeling, leading to tractable estimation procedures for both the label frequency and classification parameters.
+
+\textbf{SCAR assumption} enables simple solutions through the key relationships $P(S = 1|X = x) = c \cdot P(Y = 1|X = x)$ and distributional equality between labeled positives and true positives. This leads to straightforward estimators for label frequency and effective ERM procedures.
+
+\textbf{ERM under SCAR} transforms the standard risk function into a weighted version that accounts for labeling bias. Both separate estimation (estimate $c$ then minimize weighted risk) and joint estimation (simultaneously estimate parameters and label frequency) approaches provide practical solutions.
+
+\textbf{Beyond SCAR}, learning under selection bias requires estimating propensity scores, which is challenging but necessary for realistic applications. The Probabilistic Gap assumption provides one principled approach to modeling how labeling probability relates to class membership probability.
+
+These methods are crucial for practical machine learning applications where fully labeled data is expensive or impossible to obtain, such as medical diagnosis, text classification, and bioinformatics.
+
+\newpage
+
+\section{ Question 13: Support Vector Machines}
+
+\subsection{Introduction and Problem Statement}
+
+Support Vector Machines (SVMs) are powerful supervised learning algorithms used for classification and regression tasks. The fundamental idea behind SVMs is to find the optimal hyperplane that separates different classes of data points with the maximum possible margin.
+
+\textbf{Problem Setup:} Given a training dataset $\{(\mathbf{x}_i, y_i)\}_{i=1}^n$ where:
+\begin{itemize}
+    \item $\mathbf{x}_i \in \mathbb{R}^d$ are the input feature vectors
+    \item $y_i \in \{-1, +1\}$ are the class labels for binary classification
+\end{itemize}
+
+The goal is to find a decision boundary (hyperplane) that best separates the two classes.
+
+\subsection{Linear SVM for Separable Case}
+
+\subsubsection{Hyperplane Definition}
+A hyperplane in $d$-dimensional space is defined by the equation:
+\begin{equation}
+\mathbf{w}^T\mathbf{x} + b = 0
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $\mathbf{w} \in \mathbb{R}^d$ is the weight vector (normal to the hyperplane)
+    \item $b \in \mathbb{R}$ is the bias term
+    \item The decision function is: $f(\mathbf{x}) = \text{sign}(\mathbf{w}^T\mathbf{x} + b)$
+\end{itemize}
+
+\subsubsection{Margin Maximization}
+The \textbf{margin} is the distance between the hyperplane and the closest data points from either class. These closest points are called \textbf{support vectors}.
+
+The distance from a point $\mathbf{x}_i$ to the hyperplane is:
+\begin{equation}
+\text{distance} = \frac{|\mathbf{w}^T\mathbf{x}_i + b|}{\|\mathbf{w}\|}
+\end{equation}
+
+For correct classification, we require:
+\begin{equation}
+y_i(\mathbf{w}^T\mathbf{x}_i + b) \geq 1 \quad \forall i
+\end{equation}
+
+The margin width is $\frac{2}{\|\mathbf{w}\|}$, so maximizing the margin is equivalent to minimizing $\|\mathbf{w}\|$.
+
+\subsubsection{Optimization Problem (Separable Case)}
+The SVM optimization problem for linearly separable data is:
+
+\begin{align}
+\min_{\mathbf{w}, b} \quad &\frac{1}{2}\|\mathbf{w}\|^2 \\
+\text{subject to} \quad &y_i(\mathbf{w}^T\mathbf{x}_i + b) \geq 1, \quad i = 1, \ldots, n
+\end{align}
+
+This is a convex quadratic programming problem with linear constraints.
+
+\subsubsection{Dual Formulation}
+Using Lagrange multipliers $\alpha_i \geq 0$, the dual problem becomes:
+
+\begin{align}
+\max_{\boldsymbol{\alpha}} \quad &\sum_{i=1}^n \alpha_i - \frac{1}{2}\sum_{i=1}^n\sum_{j=1}^n \alpha_i \alpha_j y_i y_j \mathbf{x}_i^T\mathbf{x}_j \\
+\text{subject to} \quad &\sum_{i=1}^n \alpha_i y_i = 0 \\
+&\alpha_i \geq 0, \quad i = 1, \ldots, n
+\end{align}
+
+The optimal weight vector can be expressed as:
+\begin{equation}
+\mathbf{w}^* = \sum_{i=1}^n \alpha_i^* y_i \mathbf{x}_i
+\end{equation}
+
+Only data points with $\alpha_i > 0$ are support vectors and contribute to the decision boundary.
+
+\subsection{Handling Non-Separable Case}
+
+\subsubsection{Soft Margin SVM}
+When data is not linearly separable, we introduce \textbf{slack variables} $\xi_i \geq 0$ to allow some misclassification:
+
+\begin{align}
+\min_{\mathbf{w}, b, \boldsymbol{\xi}} \quad &\frac{1}{2}\|\mathbf{w}\|^2 + C\sum_{i=1}^n \xi_i \\
+\text{subject to} \quad &y_i(\mathbf{w}^T\mathbf{x}_i + b) \geq 1 - \xi_i, \quad i = 1, \ldots, n \\
+&\xi_i \geq 0, \quad i = 1, \ldots, n
+\end{align}
+
+where:
+\begin{itemize}
+    \item $C > 0$ is the regularization parameter controlling the trade-off between margin maximization and classification errors
+    \item $\xi_i$ represents the amount by which point $i$ violates the margin constraint
+    \item If $\xi_i = 0$: point is correctly classified and outside the margin
+    \item If $0 < \xi_i < 1$: point is correctly classified but inside the margin
+    \item If $\xi_i \geq 1$: point is misclassified
+\end{itemize}
+
+\subsubsection{Dual Problem for Soft Margin}
+The dual formulation becomes:
+
+\begin{align}
+\max_{\boldsymbol{\alpha}} \quad &\sum_{i=1}^n \alpha_i - \frac{1}{2}\sum_{i=1}^n\sum_{j=1}^n \alpha_i \alpha_j y_i y_j \mathbf{x}_i^T\mathbf{x}_j \\
+\text{subject to} \quad &\sum_{i=1}^n \alpha_i y_i = 0 \\
+&0 \leq \alpha_i \leq C, \quad i = 1, \ldots, n
+\end{align}
+
+Note that the only difference from the separable case is the upper bound $C$ on the dual variables.
+
+\subsection{Connection with Hinge Loss}
+
+\subsubsection{Hinge Loss Function}
+The SVM optimization can be reformulated as an unconstrained problem using the \textbf{hinge loss} function:
+
+\begin{equation}
+L_{\text{hinge}}(y, f(\mathbf{x})) = \max(0, 1 - y \cdot f(\mathbf{x}))
+\end{equation}
+
+where $f(\mathbf{x}) = \mathbf{w}^T\mathbf{x} + b$.
+
+\subsubsection{Equivalent Formulation}
+The soft margin SVM is equivalent to:
+\begin{equation}
+\min_{\mathbf{w}, b} \quad \frac{1}{2}\|\mathbf{w}\|^2 + C\sum_{i=1}^n \max(0, 1 - y_i(\mathbf{w}^T\mathbf{x}_i + b))
+\end{equation}
+
+This shows that SVM minimizes a regularized hinge loss, where:
+\begin{itemize}
+    \item The first term $\frac{1}{2}\|\mathbf{w}\|^2$ is the regularization term
+    \item The second term is the empirical hinge loss
+    \item $C$ controls the trade-off between regularization and loss minimization
+\end{itemize}
+
+\subsubsection{Properties of Hinge Loss}
+\begin{itemize}
+    \item \textbf{Convex}: Enables efficient optimization
+    \item \textbf{Piecewise linear}: Creates sparse solutions (many $\alpha_i = 0$)
+    \item \textbf{Margin-based}: Penalizes predictions within the margin
+    \item \textbf{Not differentiable} at $y \cdot f(\mathbf{x}) = 1$, but subgradient methods can be used
+\end{itemize}
+
+\subsection{Kernel SVM}
+
+\subsubsection{Motivation}
+For non-linearly separable data, we can map the input space to a higher-dimensional feature space where the data becomes linearly separable.
+
+Let $\phi: \mathbb{R}^d \rightarrow \mathbb{R}^D$ (where $D \gg d$) be a feature mapping. The decision function becomes:
+\begin{equation}
+f(\mathbf{x}) = \mathbf{w}^T\phi(\mathbf{x}) + b
+\end{equation}
+
+\subsubsection{Kernel Trick}
+Instead of explicitly computing $\phi(\mathbf{x})$, we use the \textbf{kernel trick}. Define the kernel function:
+\begin{equation}
+K(\mathbf{x}_i, \mathbf{x}_j) = \phi(\mathbf{x}_i)^T\phi(\mathbf{x}_j)
+\end{equation}
+
+The dual problem becomes:
+\begin{align}
+\max_{\boldsymbol{\alpha}} \quad &\sum_{i=1}^n \alpha_i - \frac{1}{2}\sum_{i=1}^n\sum_{j=1}^n \alpha_i \alpha_j y_i y_j K(\mathbf{x}_i, \mathbf{x}_j) \\
+\text{subject to} \quad &\sum_{i=1}^n \alpha_i y_i = 0 \\
+&0 \leq \alpha_i \leq C, \quad i = 1, \ldots, n
+\end{align}
+
+The decision function becomes:
+\begin{equation}
+f(\mathbf{x}) = \sum_{i=1}^n \alpha_i y_i K(\mathbf{x}_i, \mathbf{x}) + b
+\end{equation}
+
+\subsubsection{Properties of Valid Kernels}
+A function $K(\mathbf{x}, \mathbf{x}')$ is a valid kernel if and only if it satisfies \textbf{Mercer's condition}:
+\begin{itemize}
+    \item $K$ must be symmetric: $K(\mathbf{x}, \mathbf{x}') = K(\mathbf{x}', \mathbf{x})$
+    \item $K$ must be positive semi-definite: For any finite set $\{\mathbf{x}_1, \ldots, \mathbf{x}_n\}$, the kernel matrix $\mathbf{K}$ with $K_{ij} = K(\mathbf{x}_i, \mathbf{x}_j)$ must be positive semi-definite
+\end{itemize}
+
+\subsubsection{Common Kernel Examples}
+
+\textbf{1. Linear Kernel:}
+\begin{equation}
+K(\mathbf{x}, \mathbf{x}') = \mathbf{x}^T\mathbf{x}'
+\end{equation}
+\begin{itemize}
+    \item Equivalent to no kernel (original feature space)
+    \item Good for high-dimensional data or when data is already linearly separable
+\end{itemize}
+
+\textbf{2. Polynomial Kernel:}
+\begin{equation}
+K(\mathbf{x}, \mathbf{x}') = (\mathbf{x}^T\mathbf{x}' + c)^d
+\end{equation}
+\begin{itemize}
+    \item $d$ is the degree of the polynomial
+    \item $c \geq 0$ is a constant term
+    \item Creates interactions between features up to degree $d$
+    \item Can be computationally expensive for large $d$
+\end{itemize}
+
+\textbf{3. Radial Basis Function (RBF/Gaussian) Kernel:}
+\begin{equation}
+K(\mathbf{x}, \mathbf{x}') = \exp\left(-\frac{\|\mathbf{x} - \mathbf{x}'\|^2}{2\sigma^2}\right) = \exp(-\gamma \|\mathbf{x} - \mathbf{x}'\|^2)
+\end{equation}
+\begin{itemize}
+    \item $\sigma > 0$ (or $\gamma = \frac{1}{2\sigma^2}$) controls the width of the kernel
+    \item Maps to infinite-dimensional space
+    \item Creates smooth, localized decision boundaries
+    \item Most popular kernel in practice
+\end{itemize}
+
+\textbf{4. Sigmoid Kernel:}
+\begin{equation}
+K(\mathbf{x}, \mathbf{x}') = \tanh(\alpha \mathbf{x}^T\mathbf{x}' + c)
+\end{equation}
+\begin{itemize}
+    \item $\alpha > 0$ and $c < 0$ for valid kernel
+    \item Similar to neural network activation
+    \item Not always positive semi-definite
+\end{itemize}
+
+\subsubsection{Kernel Properties and Selection}
+\begin{itemize}
+    \item \textbf{Closure properties}: Kernels can be combined (sum, product, scalar multiplication)
+    \item \textbf{Computational efficiency}: Kernel computation should be faster than explicit feature mapping
+    \item \textbf{Domain knowledge}: Choose kernels based on problem characteristics
+    \item \textbf{Cross-validation}: Use validation to select optimal kernel and parameters
+\end{itemize}
+
+\subsection{Summary}
+
+Support Vector Machines provide a principled approach to classification by:
+
+\begin{enumerate}
+    \item \textbf{Maximizing margin}: Finding the hyperplane with maximum separation between classes
+    \item \textbf{Handling non-separable data}: Using slack variables and soft margin formulation
+    \item \textbf{Connecting to hinge loss}: Providing a loss function interpretation for regularized risk minimization
+    \item \textbf{Extending to non-linear cases}: Using kernel trick to implicitly work in high-dimensional feature spaces
+\end{enumerate}
+
+\textbf{Key advantages:}
+\begin{itemize}
+    \item Effective for high-dimensional data
+    \item Memory efficient (only stores support vectors)
+    \item Versatile through different kernel functions
+    \item Strong theoretical foundations
+\end{itemize}
+
+\textbf{Key considerations:}
+\begin{itemize}
+    \item Choice of kernel and hyperparameters ($C$, kernel parameters)
+    \item Computational complexity scales with training set size
+    \item No probabilistic output (can be addressed with Platt scaling)
+    \item Sensitive to feature scaling
+\end{itemize}
+
+The SVM framework provides both geometric intuition (maximum margin) and optimization theory foundations, making it one of the most important classical machine learning algorithms.
+
+\end{document}
