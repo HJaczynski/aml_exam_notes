@@ -402,7 +402,7 @@ L(\boldsymbol{\beta}) = \prod_{i=1}^n \pi_i^{Y_i}(1-\pi_i)^{1-Y_i}
 
 \begin{align}
 \ell(\boldsymbol{\beta}) &= \log L(\boldsymbol{\beta}) \\
-&= \sum_{i=1}^n \left[ Y_i \log\left(\frac{\pi_i}{1-\pi_i}\right) + \log(1-\pi_i) \right] \\
+&= \sum_{i=1}^n \left[ Y_i \log(\pi_i) + (1 - Y_i) \log(1 - \pi_i) \right] \\
 &= \sum_{i=1}^n \left[ Y_i \boldsymbol{\beta}^T\mathbf{x}_i - \log(1 + \exp(\boldsymbol{\beta}^T\mathbf{x}_i)) \right]
 \end{align}
 
